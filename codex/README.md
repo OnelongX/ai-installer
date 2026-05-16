@@ -42,40 +42,46 @@
 
 去 [https://livetoken.top](https://livetoken.top) 注册并生成一把 Key，形如 `sk-xxx...`。
 
-### 2. 启动安装器
+### 2. 启动安装器，输入 API Key
 
-双击便携版 `.exe` 或安装后从桌面启动。会进入欢迎页 → 输入 API Key。
+双击便携版 `.exe` 或安装后从桌面启动。进入欢迎页 → 在「API Key」输入框粘贴你的 LiveToken Key（以 `sk-` 开头），点"继续"。
+
+![输入 API Key](docs/screenshots/02-api-key-filled.png)
+
+> 如果之前装过，安装器会自动检测到已有 Key，可以直接复用。
 
 ### 3. 查看环境检测
 
-安装器会跑一遍：
+下一页安装器会自检本机环境，列出系统、Node.js、Codex CLI、配置文件 4 项的状态。**绿色"已满足"**表示无需处理；其余会标成"自动修复"，由后面的安装步骤补齐。
 
-```text
-✓ 系统：Windows 10/11 x64
-? Node.js：未安装 → 自动修复
-? Codex CLI：未安装 → 自动修复
-✓ Codex 配置：将在首次启动时自动生成
-```
+![环境检测](docs/screenshots/03-detection.png)
 
-### 4. 确认安装计划 → 一键开始
+确认无误后点"继续到安装计划"。
 
-确认任务列表后点"开始安装"，全程自动：
+### 4. 确认安装计划
 
-- 装 Node 用 winget（首次需要 UAC 提权，弹出来允许即可）
-- 装 Codex CLI 用 npm，国内网络可能要 1–3 分钟
+根据上一步的检测结果，安装器会动态生成最少必要的任务列表 —— 已装好的不会重复跑。
+
+![安装计划](docs/screenshots/04-plan.png)
+
+点右下角"开始安装"启动全自动流程：
+
+- 装 Node 用 `winget`（首次需要 UAC 提权，弹出来允许即可）
+- 装 Codex CLI 用 `npm i -g @openai/codex`，国内网络可能要 1–3 分钟
 - 写配置和环境变量是秒级
 - 最后跑一次 `codex --version` 验证
 
-中间任何一步失败，UI 会标红那一行，点"重试当前步骤"就行。
+### 5. 执行过程
 
-### 5. 完成
+执行页会实时滚动每条命令的输出。中间任何一步失败，UI 会标红那一行，点"重试当前步骤"就能从失败点恢复。
 
-成功后会看到：
+![安装执行](docs/screenshots/05-execution.png)
 
-- Codex CLI 版本号
-- 配置文件路径
-- API Key 掩码（前 2 位 + 后 4 位）
-- LiveToken 控制台入口
+### 6. 完成
+
+成功后能看到 Codex CLI 版本号、配置文件路径、API Key 掩码，以及一张 LiveToken 控制台入口卡。
+
+![安装完成](docs/screenshots/06-complete.png)
 
 **新开一个 PowerShell / Terminal** 跑：
 
@@ -84,7 +90,7 @@ codex --version
 codex
 ```
 
-如果显示版本号并能进 Codex REPL，就成了。
+显示版本号并能进 Codex REPL 就成了。
 
 > 注意：环境变量是写到"用户级"，**当前已打开的终端窗口看不到**新值，必须**新开一个**。
 
