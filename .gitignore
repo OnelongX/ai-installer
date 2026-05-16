@@ -9,3 +9,5 @@ playwright-report/
 .vscode/
 .idea/
 *.tsbuildinfo
+__pycache__/
+*.pyc

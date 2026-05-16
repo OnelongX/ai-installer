@@ -1,7 +1,7 @@
 {
   "tag_name": "v0.1.2",
-  "name": "v0.1.2 — Claude Code installer",
-  "body": "首个发布版本：自动安装 Claude Code CLI + LiveToken 配置。\n\n## 下载\n\n- `Claude 安装器 便携版 0.1.2.exe` — 双击即用\n- `Claude 安装器 安装包 0.1.2.exe` — NSIS 标准安装包\n\n详情见 [README](https://github.com/OnelongX/ai-installer#readme)。",
+  "name": "v0.1.2 — Claude + Codex installer",
+  "body": "首个发布版本：自动安装 Claude Code CLI / Codex CLI，并写好 LiveToken 网关配置。\n\n## 下载\n\n| 文件 | 类型 |\n|---|---|\n| `Claude-Installer-Portable-0.1.2.exe` | Claude · 便携 |\n| `Claude-Installer-Setup-0.1.2.exe` | Claude · NSIS 安装包 |\n| `Codex-Installer-Portable-0.1.2.exe` | Codex · 便携 |\n| `Codex-Installer-Setup-0.1.2.exe` | Codex · NSIS 安装包 |\n\n详细使用教程：\n\n- Claude → [`claude/README.md`](https://github.com/OnelongX/ai-installer/tree/main/claude#readme)\n- Codex → [`codex/README.md`](https://github.com/OnelongX/ai-installer/tree/main/codex#readme)\n",
   "draft": false,
   "prerelease": false
 }
