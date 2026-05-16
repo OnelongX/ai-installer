@@ -8,6 +8,7 @@
 |---|---|---|---|
 | [Claude 安装器](./claude/) | [`@anthropic-ai/claude-code`](https://docs.anthropic.com/claude/docs/claude-code) | claude-sonnet-4-5 | [`claude/`](./claude/) |
 | [Codex 安装器](./codex/) | [`@openai/codex`](https://www.npmjs.com/package/@openai/codex) | gpt-5.5 (high) | [`codex/`](./codex/) |
+| [OpenClaw 配置脚本](./openclaw/) | [`openclaw`](https://openclaw.ai) (npm) | claude-sonnet-4-5 | [`openclaw/`](./openclaw/) |
 
 > **新版 Claude 安装器 v0.1.3 已自动关闭 `CLAUDE_CODE_ATTRIBUTION_HEADER`**，防止 Claude Code 2.1.36+ 在每个请求里塞的随机化 `cch` 字段把第三方 Anthropic 网关（含 LiveToken）的 prefix cache 命中率打到 0。建议老用户直接覆盖一遍。
 
