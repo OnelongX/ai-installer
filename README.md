@@ -27,8 +27,8 @@
 
 | 类型 | 文件 | 适用场景 |
 |---|---|---|
-| 便携版 | `Claude 安装器 便携版 0.1.2.exe` | 双击即用，不写注册表 |
-| 安装包 | `Claude 安装器 安装包 0.1.2.exe` | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
+| 便携版 | [`Claude-Installer-Portable-0.1.2.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.2/Claude-Installer-Portable-0.1.2.exe) | 双击即用，不写注册表 |
+| 安装包 | [`Claude-Installer-Setup-0.1.2.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.2/Claude-Installer-Setup-0.1.2.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
 
 > 文件未做代码签名，Windows SmartScreen 第一次会弹"未识别的应用"，点"更多信息 → 仍要运行"即可。
 
