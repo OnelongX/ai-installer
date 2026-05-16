@@ -1,5 +1,7 @@
 # ai-installer
 
+![ai-installer hero](docs/marketing/hero-banner.png)
+
 一组 Windows 桌面安装器，零配置帮你把主流 AI 编码 CLI 装到本机并接入 [LiveToken](https://livetoken.top) 网关。
 
 | 工具 | 装的是 | 默认模型 | 子目录 |

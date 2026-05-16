@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>ai-installer hero banner</title>
+    <style>
+      :root {
+        --bg-0: #050b1a;
+        --bg-1: #0a1530;
+        --bg-2: #112049;
+        --cyan: #38bdf8;
+        --cyan-deep: #22d3ee;
+        --blue: #6366f1;
+        --violet: #a855f7;
+        --text: #f0fdf4;
+        --muted: #94a3b8;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        font-family: 'Inter', 'Segoe UI', 'PingFang SC',
+          'Microsoft YaHei UI', sans-serif;
+        background: var(--bg-0);
+        color: var(--text);
+      }
+      body {
+        position: relative;
+        background: radial-gradient(
+            ellipse at 70% 30%,
+            #1a2a6b 0%,
+            transparent 55%
+          ),
+          radial-gradient(
+            ellipse at 20% 80%,
+            #2a1a5c 0%,
+            transparent 60%
+          ),
+          linear-gradient(135deg, #050b1a 0%, #0a1530 50%, #060c1e 100%);
+      }
+      .grid {
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(
+            rgba(56, 189, 248, 0.06) 1px,
+            transparent 1px
+          ),
+          linear-gradient(
+            90deg,
+            rgba(56, 189, 248, 0.06) 1px,
+            transparent 1px
+          );
+        background-size: 64px 64px;
+        mask-image: radial-gradient(
+          ellipse at center,
+          black 0%,
+          transparent 80%
+        );
+      }
+      .particles {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .particles .dot {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 14px var(--cyan), 0 0 28px var(--cyan);
+        opacity: 0.7;
+      }
+      .particles .dot.violet {
+        background: var(--violet);
+        box-shadow: 0 0 14px var(--violet), 0 0 28px var(--violet);
+      }
+      .frame {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: grid;
+        grid-template-columns: 760px 1fr;
+        align-items: center;
+        padding: 96px 120px;
+        gap: 80px;
+      }
+      .left {
+        position: relative;
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 18px;
+        border-radius: 999px;
+        background: rgba(56, 189, 248, 0.1);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        color: var(--cyan);
+        font-size: 18px;
+        letter-spacing: 0.3em;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 36px;
+      }
+      .tag::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 10px var(--cyan);
+      }
+      h1 {
+        font-size: 168px;
+        line-height: 0.92;
+        letter-spacing: -0.04em;
+        font-weight: 800;
+        margin-bottom: 28px;
+        background: linear-gradient(180deg, #ffffff 0%, #b8d4ff 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        text-shadow: 0 0 60px rgba(56, 189, 248, 0.3);
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+      }
+      h1 .accent {
+        background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+      .sub {
+        font-size: 36px;
+        line-height: 1.45;
+        color: #cbd5e1;
+        font-weight: 400;
+        max-width: 680px;
+      }
+      .sub strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .badges {
+        margin-top: 56px;
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .badge {
+        padding: 12px 22px;
+        border-radius: 999px;
+        background: rgba(99, 102, 241, 0.14);
+        border: 1px solid rgba(99, 102, 241, 0.5);
+        color: #c7d2fe;
+        font-size: 22px;
+        font-weight: 500;
+      }
+      .badge.cyan {
+        background: rgba(56, 189, 248, 0.14);
+        border-color: rgba(56, 189, 248, 0.5);
+        color: #bae6fd;
+      }
+      .badge.violet {
+        background: rgba(168, 85, 247, 0.16);
+        border-color: rgba(168, 85, 247, 0.5);
+        color: #e9d5ff;
+      }
+      .repo {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+        font-size: 22px;
+        color: var(--muted);
+        opacity: 0.7;
+      }
+      .repo::before {
+        content: '→ ';
+        color: var(--cyan);
+      }
+      /* terminal block */
+      .right {
+        position: relative;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .terminal {
+        position: relative;
+        width: 760px;
+        height: 480px;
+        border-radius: 24px;
+        background: linear-gradient(
+          135deg,
+          rgba(10, 21, 48, 0.95) 0%,
+          rgba(5, 11, 26, 0.95) 100%
+        );
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        box-shadow: 0 0 80px rgba(56, 189, 248, 0.2),
+          0 0 160px rgba(99, 102, 241, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px);
+        overflow: visible;
+      }
+      .terminal::before {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        border-radius: 26px;
+        background: linear-gradient(
+          135deg,
+          rgba(56, 189, 248, 0.5),
+          transparent 40%,
+          transparent 60%,
+          rgba(168, 85, 247, 0.5)
+        );
+        z-index: -1;
+        filter: blur(2px);
+      }
+      .term-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+      }
+      .term-header .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+      }
+      .term-header .dot.r {
+        background: #ef4444;
+      }
+      .term-header .dot.y {
+        background: #facc15;
+      }
+      .term-header .dot.g {
+        background: #22c55e;
+      }
+      .term-header .title {
+        margin-left: 16px;
+        font-family: 'JetBrains Mono', Consolas, monospace;
+        font-size: 16px;
+        color: var(--muted);
+      }
+      .term-body {
+        padding: 32px 36px;
+        font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+        font-size: 22px;
+        line-height: 1.7;
+      }
+      .term-body .line {
+        color: #e2e8f0;
+        white-space: nowrap;
+      }
+      .term-body .prompt {
+        color: var(--cyan);
+        margin-right: 12px;
+        font-weight: 700;
+      }
+      .term-body .ok {
+        color: #4ade80;
+      }
+      .term-body .dim {
+        color: var(--muted);
+      }
+      .term-body .cursor {
+        display: inline-block;
+        width: 12px;
+        height: 24px;
+        background: var(--cyan);
+        vertical-align: -3px;
+        margin-left: 4px;
+        box-shadow: 0 0 12px var(--cyan);
+      }
+      .progress {
+        position: absolute;
+        left: 36px;
+        right: 36px;
+        bottom: 36px;
+        height: 14px;
+        border-radius: 999px;
+        background: rgba(56, 189, 248, 0.12);
+        overflow: visible;
+      }
+      .progress-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 78%;
+        border-radius: 999px;
+        background: linear-gradient(
+          90deg,
+          var(--cyan-deep) 0%,
+          var(--blue) 60%,
+          var(--violet) 100%
+        );
+        box-shadow: 0 0 24px rgba(99, 102, 241, 0.7),
+          0 0 48px rgba(56, 189, 248, 0.4);
+      }
+      .bolt {
+        position: absolute;
+        right: -60px;
+        top: -16px;
+        width: 70px;
+        height: 46px;
+        filter: drop-shadow(0 0 18px rgba(168, 85, 247, 0.7));
+      }
+      .ribbon {
+        position: absolute;
+        left: 36px;
+        bottom: 70px;
+        font-family: 'JetBrains Mono', Consolas, monospace;
+        font-size: 15px;
+        color: var(--muted);
+        letter-spacing: 0.05em;
+      }
+      .ribbon b {
+        color: #4ade80;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="grid"></div>
+    <div class="particles">
+      <div class="dot" style="left: 8%; top: 12%"></div>
+      <div class="dot violet" style="left: 18%; top: 78%"></div>
+      <div class="dot" style="left: 42%; top: 6%"></div>
+      <div class="dot violet" style="left: 56%; top: 88%"></div>
+      <div class="dot" style="left: 72%; top: 14%"></div>
+      <div class="dot violet" style="left: 84%; top: 22%"></div>
+      <div class="dot" style="left: 92%; top: 64%"></div>
+      <div class="dot violet" style="left: 64%; top: 72%"></div>
+      <div class="dot" style="left: 30%; top: 44%"></div>
+    </div>
+    <div class="frame">
+      <div class="left">
+        <span class="tag">Powered by LiveToken</span>
+        <h1>
+          <span>ai-</span><span class="accent">installer</span>
+        </h1>
+        <p class="sub">
+          一键装好 <strong>Claude Code</strong> /
+          <strong>Codex CLI</strong>，开箱接入
+          <strong>LiveToken 网关</strong>，
+          <br />Windows 下零配置开跑。
+        </p>
+        <div class="badges">
+          <span class="badge cyan">winget · npm 自动化</span>
+          <span class="badge">PATH 自动刷新</span>
+          <span class="badge violet">中文友好 · 全程可视化</span>
+        </div>
+        <div class="repo">github.com/OnelongX/ai-installer</div>
+      </div>
+      <div class="right">
+        <div class="terminal">
+          <div class="term-header">
+            <span class="dot r"></span><span class="dot y"></span
+            ><span class="dot g"></span>
+            <span class="title"
+              >powershell  ·  ai-installer</span
+            >
+          </div>
+          <div class="term-body">
+            <div class="line">
+              <span class="prompt">PS&gt;</span>
+              <span class="ok">✓</span> Node.js v24.15.0
+            </div>
+            <div class="line">
+              <span class="prompt">PS&gt;</span>
+              <span class="ok">✓</span> Claude Code 2.1.140
+            </div>
+            <div class="line">
+              <span class="prompt">PS&gt;</span>
+              <span class="ok">✓</span> codex-cli 0.125.0
+            </div>
+            <div class="line">
+              <span class="prompt">PS&gt;</span>
+              <span class="dim"
+                >wrote ~/.claude/settings.json · 写入 ANTHROPIC_API_KEY</span
+              >
+            </div>
+            <div class="line">
+              <span class="prompt">PS&gt;</span> claude<span
+                class="cursor"
+              ></span>
+            </div>
+          </div>
+          <div class="ribbon">
+            install <b>complete</b> · 4 / 4 steps · 1m 22s
+          </div>
+          <div class="progress">
+            <div class="progress-fill"></div>
+            <svg
+              class="bolt"
+              viewBox="0 0 70 46"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#6366f1" />
+                  <stop offset="100%" stop-color="#a855f7" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M2 24 L34 4 L28 22 L66 22 L34 46 L40 28 L2 28 Z"
+                fill="url(#lg)"
+                stroke="#c7d2fe"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

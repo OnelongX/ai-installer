@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>ai-installer social card</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        width: 1200px; height: 1200px; overflow: hidden;
+        font-family: 'Inter', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
+        color: #f0fdf4;
+        background: radial-gradient(ellipse at 30% 20%, #1a2a6b 0%, transparent 55%),
+                    radial-gradient(ellipse at 80% 90%, #2a1a5c 0%, transparent 60%),
+                    linear-gradient(135deg, #050b1a 0%, #0a1530 50%, #060c1e 100%);
+      }
+      .grid {
+        position: absolute; inset: 0;
+        background-image:
+          linear-gradient(rgba(56,189,248,0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(56,189,248,0.06) 1px, transparent 1px);
+        background-size: 60px 60px;
+        mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%);
+      }
+      .wrap {
+        position: relative; width: 100%; height: 100%;
+        padding: 100px 100px;
+        display: flex; flex-direction: column; justify-content: space-between;
+      }
+      .header { display: flex; justify-content: space-between; align-items: center; }
+      .tag {
+        display: inline-flex; align-items: center; gap: 12px;
+        padding: 12px 22px; border-radius: 999px;
+        background: rgba(56,189,248,0.1);
+        border: 1px solid rgba(56,189,248,0.4);
+        color: #38bdf8; font-size: 22px; letter-spacing: 0.3em;
+        font-weight: 600; text-transform: uppercase;
+      }
+      .tag::before {
+        content: ''; width: 10px; height: 10px; border-radius: 50%;
+        background: #38bdf8; box-shadow: 0 0 12px #38bdf8;
+      }
+      .star {
+        font-family: 'JetBrains Mono', Consolas, monospace;
+        font-size: 22px; color: #94a3b8; opacity: 0.7;
+      }
+      h1 {
+        font-size: 232px; line-height: 0.9; letter-spacing: -0.04em;
+        font-weight: 800;
+        background: linear-gradient(180deg, #ffffff 0%, #b8d4ff 100%);
+        background-clip: text; -webkit-background-clip: text; color: transparent;
+        text-shadow: 0 0 80px rgba(56,189,248,0.3);
+      }
+      h1 .accent {
+        background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%);
+        background-clip: text; -webkit-background-clip: text; color: transparent;
+      }
+      .sub {
+        margin-top: 36px; font-size: 48px; line-height: 1.4;
+        color: #e2e8f0; font-weight: 500;
+      }
+      .sub strong {
+        color: #f0fdf4;
+        background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%);
+        background-clip: text; -webkit-background-clip: text; color: transparent;
+        font-weight: 700;
+      }
+      .features {
+        margin-top: 80px;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 28px;
+      }
+      .feature {
+        display: flex; align-items: center; gap: 20px;
+        padding: 28px 32px; border-radius: 22px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(99,102,241,0.4);
+      }
+      .feature .icon {
+        flex: 0 0 auto;
+        width: 56px; height: 56px; border-radius: 14px;
+        display: grid; place-items: center;
+        font-size: 30px; font-weight: 700;
+        background: rgba(56,189,248,0.18);
+        color: #38bdf8;
+        border: 1px solid rgba(56,189,248,0.5);
+      }
+      .feature.v .icon { background: rgba(168,85,247,0.18); color: #c4b5fd; border-color: rgba(168,85,247,0.5); }
+      .feature .text {
+        font-size: 30px; font-weight: 600; color: #f0fdf4;
+        line-height: 1.3;
+      }
+      .feature .text small {
+        display: block; font-size: 22px; font-weight: 400; color: #94a3b8; margin-top: 4px;
+      }
+      .footer {
+        display: flex; justify-content: space-between; align-items: flex-end;
+      }
+      .repo {
+        font-family: 'JetBrains Mono', Consolas, monospace;
+        font-size: 26px; color: #94a3b8;
+      }
+      .repo b { color: #f0fdf4; font-weight: 600; }
+      .cta {
+        padding: 22px 38px; border-radius: 999px;
+        background: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+        color: #050b1a; font-size: 30px; font-weight: 700;
+        box-shadow: 0 0 50px rgba(56,189,248,0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="grid"></div>
+    <div class="wrap">
+      <div class="header">
+        <span class="tag">Powered by LiveToken</span>
+        <span class="star">★ github.com/OnelongX</span>
+      </div>
+
+      <div>
+        <h1>
+          <span>ai-</span><br/><span class="accent">installer</span>
+        </h1>
+        <p class="sub">
+          一键装好 <strong>Claude Code / Codex CLI</strong>，<br/>
+          开箱接入 LiveToken。
+        </p>
+
+        <div class="features">
+          <div class="feature">
+            <div class="icon">①</div>
+            <div class="text">winget 装 Node<small>缺啥补啥，全程自动</small></div>
+          </div>
+          <div class="feature v">
+            <div class="icon">②</div>
+            <div class="text">npm 装 CLI<small>失败可断点重试</small></div>
+          </div>
+          <div class="feature">
+            <div class="icon">③</div>
+            <div class="text">写配置 + Key<small>BASE_URL 直连 LiveToken</small></div>
+          </div>
+          <div class="feature v">
+            <div class="icon">④</div>
+            <div class="text">验证 OK<small>新开终端就能用</small></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="repo">github.com/<b>OnelongX/ai-installer</b></div>
+        <div class="cta">点开 ai-installer →</div>
+      </div>
+    </div>
+  </body>
+</html>
