@@ -15,6 +15,9 @@ describe('windows settings.json generation', () => {
     expect(parsed.model).toBe('claude-sonnet-4-5')
     expect(parsed.env.ANTHROPIC_BASE_URL).toBe('https://livetoken.top')
     expect(parsed.env.ANTHROPIC_MODEL).toBe('claude-sonnet-4-5')
+    // Force-off the per-request attribution header so third-party Anthropic
+    // gateways can keep prefix caches hot — see write-config.windows.ts.
+    expect(parsed.env.CLAUDE_CODE_ATTRIBUTION_HEADER).toBe('0')
     expect(parsed.permissions).toEqual({ defaultMode: 'acceptEdits' })
     expect(json.endsWith('\n')).toBe(true)
   })

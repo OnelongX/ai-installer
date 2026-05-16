@@ -29,7 +29,15 @@ function buildDefaultSettings(baseUrl: string) {
       ANTHROPIC_BASE_URL: baseUrl,
       ANTHROPIC_MODEL: DEFAULT_MODEL,
       ANTHROPIC_SMALL_FAST_MODEL: DEFAULT_MODEL,
-      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '0'
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '0',
+      // Claude Code 2.1.36+ injects an `x-anthropic-billing-header` system
+      // block whose `cch` field rotates per request. Anthropic's own backend
+      // strips it before computing the prefix-cache key, but every third
+      // party Anthropic-compatible gateway (LiveToken, Bedrock, vLLM, etc.)
+      // treats it as part of the system prompt — so prefix-cache hit rate
+      // crashes to zero and token spend balloons. Disabling the header here
+      // restores cache hits for users routed through LiveToken.
+      CLAUDE_CODE_ATTRIBUTION_HEADER: '0'
     },
     model: DEFAULT_MODEL,
     permissions: {

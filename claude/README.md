@@ -27,8 +27,8 @@
 
 | 类型 | 文件 | 适用场景 |
 |---|---|---|
-| 便携版 | [`Claude-Installer-Portable-0.1.2.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.2/Claude-Installer-Portable-0.1.2.exe) | 双击即用，不写注册表 |
-| 安装包 | [`Claude-Installer-Setup-0.1.2.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.2/Claude-Installer-Setup-0.1.2.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
+| 便携版 | [`Claude-Installer-Portable-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.3/Claude-Installer-Portable-0.1.3.exe) | 双击即用，不写注册表 |
+| 安装包 | [`Claude-Installer-Setup-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.3/Claude-Installer-Setup-0.1.3.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
 
 > 文件未做代码签名，Windows SmartScreen 第一次会弹"未识别的应用"，点"更多信息 → 仍要运行"即可。
 
@@ -104,7 +104,8 @@ claude
     "ANTHROPIC_BASE_URL": "https://livetoken.top",
     "ANTHROPIC_MODEL": "claude-sonnet-4-5",
     "ANTHROPIC_SMALL_FAST_MODEL": "claude-sonnet-4-5",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "0"
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "0",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
   },
   "model": "claude-sonnet-4-5",
   "permissions": { "defaultMode": "acceptEdits" },
@@ -114,6 +115,8 @@ claude
 ```
 
 想换模型 / 网关，直接改这个文件即可。
+
+> **关于 `CLAUDE_CODE_ATTRIBUTION_HEADER=0`**：Claude Code 自 2.1.36 起会在每个请求的 system prompt 第一块塞一个 `x-anthropic-billing-header`，其中 `cch` 字段每次请求随机变化。Anthropic 自家服务端会剥掉它再算 prefix-cache key，但**所有第三方 Anthropic 兼容代理（LiveToken / Bedrock / vLLM 等）都不知道**，会把它当成 prompt 的一部分参与缓存哈希，导致 prefix cache 永远不命中，token 消耗暴涨、推理变慢。这个 env 把 header 关掉，缓存命中恢复正常。
 
 ---
 

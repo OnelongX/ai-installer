@@ -19,6 +19,7 @@ interface CompleteViewProps {
 const providerHighlights = [
   '兼容 Anthropic Messages API，开箱接入 Claude Code / Cline / Cursor 等工具链',
   '默认已写好 claude-sonnet-4-5，并预设 ANTHROPIC_BASE_URL 指向 LiveToken',
+  '已关掉 Claude Code 2.1.36+ 的 attribution header，保住 prefix cache 命中率',
   '国内直连稳定，按量计费，控制台余额一目了然'
 ]
 
