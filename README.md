@@ -4,11 +4,14 @@
 
 一组 Windows 桌面安装器，零配置帮你把主流 AI 编码 CLI 装到本机并接入 [LiveToken](https://livetoken.top) 网关。
 
-| 工具 | 装的是 | 默认模型 | 子目录 |
-|---|---|---|---|
-| [Claude 安装器](./claude/) | [`@anthropic-ai/claude-code`](https://docs.anthropic.com/claude/docs/claude-code) | claude-sonnet-4-5 | [`claude/`](./claude/) |
-| [Codex 安装器](./codex/) | [`@openai/codex`](https://www.npmjs.com/package/@openai/codex) | gpt-5.5 (high) | [`codex/`](./codex/) |
-| [OpenClaw 配置脚本](./openclaw/) | [`openclaw`](https://openclaw.ai) (npm) | claude-sonnet-4-5 | [`openclaw/`](./openclaw/) |
+| 工具 | 装的是 | 默认模型 | 子目录 | Windows | macOS / Linux |
+|---|---|---|---|---|---|
+| [Claude 安装器](./claude/) | `@anthropic-ai/claude-code` | claude-sonnet-4-5 | [`claude/`](./claude/) | ✅ NSIS + 便携 | ⛔ 还没打 |
+| [Codex 安装器](./codex/) | `@openai/codex` | gpt-5.5 (high) | [`codex/`](./codex/) | ✅ NSIS + 便携 | ⚠️ Python 脚本 |
+| [OpenClaw](./openclaw/) | `openclaw` (npm) | claude-sonnet-4-5 | [`openclaw/`](./openclaw/) | ✅ PS1 | ✅ Bash |
+| [Aider](./aider/) | `aider-chat` (pip) | anthropic/claude-sonnet-4-5 | [`aider/`](./aider/) | ✅ PS1 | ✅ Bash |
+| [opencode](./opencode/) | `opencode-ai` (npm) | anthropic/claude-sonnet-4-5 | [`opencode/`](./opencode/) | ✅ PS1 | ✅ Bash |
+| [Gemini CLI](./gemini-cli/) | `@google/gemini-cli` | gemini-2.5-pro | [`gemini-cli/`](./gemini-cli/) | ✅ PS1 | ✅ Bash |
 
 > **新版 Claude 安装器 v0.1.3 已自动关闭 `CLAUDE_CODE_ATTRIBUTION_HEADER`**，防止 Claude Code 2.1.36+ 在每个请求里塞的随机化 `cch` 字段把第三方 Anthropic 网关（含 LiveToken）的 prefix cache 命中率打到 0。建议老用户直接覆盖一遍。
 

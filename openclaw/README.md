@@ -8,26 +8,30 @@
 
 ## 直接用
 
-PowerShell 里跑：
+### Windows
 
 ```powershell
-# 交互式：脚本会让你贴 API Key
-.\scripts\configure-openclaw.ps1
+.\scripts\configure-openclaw.ps1                                              # 交互式
+.\scripts\configure-openclaw.ps1 -ApiKey 'sk-xxx' -DefaultModel 'claude-sonnet-4-5'
 ```
 
-或者一行命令完成：
-
-```powershell
-.\scripts\configure-openclaw.ps1 -ApiKey 'sk-xxxxxx' -DefaultModel 'claude-sonnet-4-5'
-```
-
-执行策略被拦了就先：
+执行策略被拦了就：
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 # 或一次性绕过
 powershell -ExecutionPolicy Bypass -File .\scripts\configure-openclaw.ps1
 ```
+
+### macOS / Linux / WSL
+
+```bash
+chmod +x scripts/configure-openclaw.sh
+./scripts/configure-openclaw.sh                                               # 交互式
+./scripts/configure-openclaw.sh --api-key 'sk-xxx' --model 'claude-sonnet-4-5'
+```
+
+Bash 版做的事和 PS1 完全对位，只是 env 写到 `~/.zshrc` / `~/.bashrc`（用 marker 块包裹，幂等）。
 
 ## 它干了啥
 
