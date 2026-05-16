@@ -1,0 +1,62 @@
+personality = "pragmatic"
+model = "gpt-5.4"
+model_provider = "cm"
+review_model = "gpt-5.4"
+model_reasoning_effort = "high"
+plan_mode_reasoning_effort = "xhigh"
+model_reasoning_summary = "detailed"
+model_verbosity = "medium"
+model_supports_reasoning_summaries = true
+approval_policy = "on-request"
+allow_login_shell = true
+sandbox_mode = "workspace-write"
+cli_auth_credentials_store = "file"
+chatgpt_base_url = "https://chatgpt.com/backend-api/"
+mcp_oauth_credentials_store = "auto"
+check_for_update_on_startup = true
+web_search = "live"
+approvals_reviewer = "user"
+service_tier = "fast"
+
+[model_providers.cm]
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
+name = "OpenAI"
+base_url = "http://192.168.1.101:48760/v1"
+wire_api = "responses"
+env_key = "OPENAI_API_KEY"
+
+[mcp_servers.pencil]
+command = "C:\\Users\\Administrator\\.pencil\\mcp\\visual_studio_code\\out\\mcp-server-windows-x64.exe"
+args = [ "--app", "visual_studio_code" ]
+
+[projects."C:\\Users\\Administrator"]
+trust_level = "trusted"
+
+[projects."C:\\Users\\Administrator\\Desktop\\新建文件夹"]
+trust_level = "trusted"
+
+[projects."E:\\自媒体"]
+trust_level = "trusted"
+
+[projects."E:\\gateway"]
+trust_level = "trusted"
+
+[projects."C:\\Users\\Administrator\\Desktop\\zs"]
+trust_level = "trusted"
+
+[projects.'C:\Users\Administrator\Documents\New project']
+trust_level = "trusted"
+
+[projects.'C:\Users\Administrator\Desktop\codex']
+trust_level = "trusted"
+
+[windows]
+sandbox = "elevated"
+
+[acp]
+defaultAgent = "main"
+
+[features]
+multi_agent = true

@@ -1,0 +1,159 @@
+import { describe, expect, it } from 'vitest'
+
+import { createInstallerService } from '../../src/main/installer/service'
+
+describe('installer service', () => {
+  it('creates config.toml during environment loading when it is missing', async () => {
+    const writes: Array<{ path: string; value: string }> = []
+    const service = createInstallerService({
+      exec: async () => ({
+        exitCode: 0,
+        stderr: '',
+        stdout: ''
+      }),
+      fileExists: async () => false,
+      mkdir: async () => {},
+      userProfile: 'C:\\Users\\Administrator',
+      writeFile: async (path, value) => {
+        writes.push({ path, value })
+      }
+    })
+
+    const environment = await service.loadEnvironment()
+
+    expect(environment.some((item) => item.id === 'config' && item.status === 'satisfied')).toBe(true)
+    expect(writes[0]?.path).toContain('.codex\\config.toml')
+  })
+
+  it('runs the plan and returns an execution summary', async () => {
+    const writes: Array<{ path: string; value: string }> = []
+    const logMessages: string[] = []
+    const service = createInstallerService({
+      exec: async (command, args) => {
+        if (command === 'codex' && args?.[0] === '--version') {
+          return {
+            exitCode: 0,
+            stderr: '',
+            stdout: '0.1.0'
+          }
+        }
+
+        return {
+          exitCode: 0,
+          stderr: '',
+          stdout: ''
+        }
+      },
+      fileExists: async () => true,
+      mkdir: async () => {},
+      onLog: (event) => {
+        logMessages.push(`${event.type}:${event.message}`)
+      },
+      userProfile: 'C:\\Users\\Administrator',
+      writeFile: async (path, value) => {
+        writes.push({ path, value })
+      }
+    })
+
+    const result = await service.startInstall({
+      apiKey: 'sk-test-key',
+      plan: {
+        summary: 'Install Codex on this machine',
+        tasks: ['persist-openai-api-key', 'write-config', 'verify-codex-runtime']
+      }
+    })
+
+    expect(result.status).toBe('ready')
+    expect(result.codexVersion).toBe('0.1.0')
+    expect(writes[0]?.path).toContain('.codex\\config.toml')
+    expect(logMessages.some((entry) => entry.startsWith('task-start:'))).toBe(true)
+    expect(logMessages.some((entry) => entry.endsWith('verify-codex-runtime'))).toBe(true)
+  })
+
+  it('does not run npm installation through powershell', async () => {
+    const execCalls: Array<{ args?: string[]; command: string }> = []
+    const service = createInstallerService({
+      exec: async (command, args) => {
+        execCalls.push({ args, command })
+
+        return {
+          exitCode: 0,
+          stderr: '',
+          stdout: ''
+        }
+      },
+      fileExists: async () => true,
+      mkdir: async () => {},
+      userProfile: 'C:\\Users\\Administrator',
+      writeFile: async () => {}
+    })
+
+    await service.startInstall({
+      apiKey: 'sk-test-key',
+      plan: {
+        summary: 'Install Codex on this machine',
+        tasks: ['install-codex']
+      }
+    })
+
+    expect(execCalls).toContainEqual({
+      args: ['i', '-g', '@openai/codex'],
+      command: 'npm'
+    })
+    expect(execCalls).not.toContainEqual({
+      args: ['-Command', 'npm i -g @openai/codex'],
+      command: 'powershell'
+    })
+  })
+
+  it('treats node installation as successful when Node is already available after a non-zero winget result', async () => {
+    const service = createInstallerService({
+      exec: async (command, args) => {
+        if (command === 'winget') {
+          return {
+            exitCode: 1,
+            stderr: '',
+            stdout: 'A newer version is already installed.'
+          }
+        }
+
+        if (command === 'node' && args?.[0] === '-v') {
+          return {
+            exitCode: 0,
+            stderr: '',
+            stdout: 'v24.14.0\n'
+          }
+        }
+
+        if (command === 'codex' && args?.[0] === '--version') {
+          return {
+            exitCode: 0,
+            stderr: '',
+            stdout: 'codex-cli 0.121.0\n'
+          }
+        }
+
+        return {
+          exitCode: 0,
+          stderr: '',
+          stdout: ''
+        }
+      },
+      fileExists: async () => true,
+      mkdir: async () => {},
+      userProfile: 'C:\\Users\\Administrator',
+      writeFile: async () => {}
+    })
+
+    const result = await service.startInstall({
+      apiKey: 'sk-test-key',
+      plan: {
+        summary: 'Install Codex on this machine',
+        tasks: ['install-node', 'verify-codex-runtime']
+      }
+    })
+
+    expect(result.status).toBe('ready')
+    expect(result.codexVersion).toBe('codex-cli 0.121.0')
+  })
+})
