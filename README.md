@@ -6,8 +6,8 @@
 
 | 工具 | 装的是 | 默认模型 | 子目录 | Windows | macOS / Linux |
 |---|---|---|---|---|---|
-| [Claude 安装器](./claude/) | `@anthropic-ai/claude-code` | claude-sonnet-4-5 | [`claude/`](./claude/) | ✅ NSIS + 便携 | ⛔ 还没打 |
-| [Codex 安装器](./codex/) | `@openai/codex` | gpt-5.5 (high) | [`codex/`](./codex/) | ✅ NSIS + 便携 | ⚠️ Python 脚本 |
+| [Claude 安装器](./claude/) | `@anthropic-ai/claude-code` | claude-sonnet-4-5 | [`claude/`](./claude/) | ✅ NSIS + 便携 | ✅ Bash |
+| [Codex 安装器](./codex/) | `@openai/codex` | gpt-5.5 (high) | [`codex/`](./codex/) | ✅ NSIS + 便携 | ✅ Bash |
 | [OpenClaw](./openclaw/) | `openclaw` (npm) | claude-sonnet-4-5 | [`openclaw/`](./openclaw/) | ✅ PS1 | ✅ Bash |
 | [Aider](./aider/) | `aider-chat` (pip) | anthropic/claude-sonnet-4-5 | [`aider/`](./aider/) | ✅ PS1 | ✅ Bash |
 | [opencode](./opencode/) | `opencode-ai` (npm) | anthropic/claude-sonnet-4-5 | [`opencode/`](./opencode/) | ✅ PS1 | ✅ Bash |

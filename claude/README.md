@@ -30,6 +30,26 @@
 | 便携版 | [`Claude-Installer-Portable-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.3/Claude-Installer-Portable-0.1.3.exe) | 双击即用，不写注册表 |
 | 安装包 | [`Claude-Installer-Setup-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.3/Claude-Installer-Setup-0.1.3.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
 
+## macOS / Linux / WSL
+
+没 GUI，但有一个 bash 脚本走完全一样的流程（含 v0.1.3 那条 `CLAUDE_CODE_ATTRIBUTION_HEADER=0` 修复）：
+
+```bash
+# 在线一行（强烈建议先读一遍内容再 pipe 给 bash）：
+curl -fsSL https://raw.githubusercontent.com/OnelongX/ai-installer/main/claude/install_claude.sh \
+  | bash -s -- --api-key sk-ant-xxx
+
+# 或者：clone 后执行
+git clone https://github.com/OnelongX/ai-installer.git
+cd ai-installer/claude
+chmod +x install_claude.sh
+./install_claude.sh                            # 交互式
+./install_claude.sh --api-key sk-ant-xxx
+./install_claude.sh --api-key sk-ant-xxx --model claude-opus-4-5
+```
+
+Node 缺失时脚本会按 `brew → apt/dnf/pacman/zypper → fnm` 顺序自动装。`@anthropic-ai/claude-code` 装好后写 `~/.claude/settings.json`，把 `ANTHROPIC_API_KEY` 写进 `~/.zshrc` 或 `~/.bashrc`（marker 包裹，幂等），最后跑 `claude --version` 验证。
+
 > 文件未做代码签名，Windows SmartScreen 第一次会弹"未识别的应用"，点"更多信息 → 仍要运行"即可。
 
 ---

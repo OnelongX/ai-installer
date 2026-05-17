@@ -32,6 +32,25 @@
 | 便携版 | [`Codex-Installer-Portable-0.1.2.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.2/Codex-Installer-Portable-0.1.2.exe) | 双击即用，不写注册表 |
 | 安装包 | [`Codex-Installer-Setup-0.1.2.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.2/Codex-Installer-Setup-0.1.2.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
 
+## macOS / Linux / WSL
+
+bash 一键脚本（推荐），跟 Windows 版做的事完全对位，含完整 LiveToken provider 配置：
+
+```bash
+# 在线一行：
+curl -fsSL https://raw.githubusercontent.com/OnelongX/ai-installer/main/codex/install_codex.sh \
+  | bash -s -- --api-key sk-xxx
+
+# 或：
+git clone https://github.com/OnelongX/ai-installer.git
+cd ai-installer/codex
+chmod +x install_codex.sh
+./install_codex.sh                             # 交互式
+./install_codex.sh --api-key sk-xxx
+```
+
+> 旧的 `install_codex_macos.py` 还在，但它只装 CLI 不写 LiveToken provider。新装请用 `install_codex.sh`。
+
 > 文件未做代码签名，Windows SmartScreen 第一次会弹"未识别的应用"，点"更多信息 → 仍要运行"即可。
 
 ---
