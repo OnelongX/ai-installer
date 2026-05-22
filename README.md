@@ -13,7 +13,9 @@
 | [opencode](./opencode/) | `opencode-ai` (npm) | anthropic/claude-sonnet-4-5 | [`opencode/`](./opencode/) | ✅ PS1 | ✅ Bash |
 | [Gemini CLI](./gemini-cli/) | `@google/gemini-cli` | gemini-2.5-pro | [`gemini-cli/`](./gemini-cli/) | ✅ PS1 | ✅ Bash |
 
-> **新版 Claude 安装器 v0.1.3 已自动关闭 `CLAUDE_CODE_ATTRIBUTION_HEADER`**，防止 Claude Code 2.1.36+ 在每个请求里塞的随机化 `cch` 字段把第三方 Anthropic 网关（含 LiveToken）的 prefix cache 命中率打到 0。建议老用户直接覆盖一遍。
+> **v0.1.4**：检测并清掉 `~/.claude/.credentials.json`，让 Claude Code 走 ANTHROPIC_API_KEY + ANTHROPIC_BASE_URL 而不是被缓存的 Anthropic 官方 OAuth 拦截。**所有跑过 `claude login` 的老用户都要升级**。
+>
+> **v0.1.3**：关掉 `CLAUDE_CODE_ATTRIBUTION_HEADER`，防止 Claude Code 2.1.36+ 在每个请求里塞的随机化 `cch` 字段把第三方 Anthropic 网关（含 LiveToken）的 prefix cache 命中率打到 0。
 
 两个安装器走的是同一套底层框架（Electron + React + electron-vite），共享的修复和最佳实践都收敛在双方源码里：
 
@@ -26,12 +28,12 @@
 
 ## 下载
 
-最新版本：[Releases v0.1.2](https://github.com/OnelongX/ai-installer/releases/tag/v0.1.2)
+最新版本：[Releases v0.1.4](https://github.com/OnelongX/ai-installer/releases/tag/v0.1.4)（Claude 0.1.4 / Codex 0.1.2）
 
 | 文件 | 类型 |
 |---|---|
-| [`Claude-Installer-Portable-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.3/Claude-Installer-Portable-0.1.3.exe) | Claude · 便携 |
-| [`Claude-Installer-Setup-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.3/Claude-Installer-Setup-0.1.3.exe) | Claude · NSIS |
+| [`Claude-Installer-Portable-0.1.4.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.4/Claude-Installer-Portable-0.1.4.exe) | Claude · 便携 |
+| [`Claude-Installer-Setup-0.1.4.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.4/Claude-Installer-Setup-0.1.4.exe) | Claude · NSIS |
 | [`Codex-Installer-Portable-0.1.2.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.2/Codex-Installer-Portable-0.1.2.exe) | Codex · 便携 |
 | [`Codex-Installer-Setup-0.1.2.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.2/Codex-Installer-Setup-0.1.2.exe) | Codex · NSIS |
 

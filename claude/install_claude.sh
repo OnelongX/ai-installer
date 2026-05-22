@@ -24,6 +24,7 @@ NPM_PACKAGE="@anthropic-ai/claude-code"
 SKIP_NODE=0
 SKIP_RC=0
 NON_INTERACTIVE=0
+KEEP_OAUTH=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -32,6 +33,7 @@ while [[ $# -gt 0 ]]; do
     --model)           DEFAULT_MODEL="$2"; shift 2 ;;
     --skip-node)       SKIP_NODE=1; shift ;;
     --skip-rc)         SKIP_RC=1; shift ;;
+    --keep-oauth)      KEEP_OAUTH=1; shift ;;
     --non-interactive) NON_INTERACTIVE=1; shift ;;
     -h|--help) sed -n '2,18p' "$0" | sed 's/^#\s\?//'; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 2 ;;
@@ -153,13 +155,32 @@ npm install -g "$NPM_PACKAGE"
 ok "npm i -g $NPM_PACKAGE 完成"
 
 # ---------------------------------------------------------------------------
+# 3.5 clear stale Anthropic OAuth credentials (so env vars actually win)
+# ---------------------------------------------------------------------------
+home_dir="${HOME:-/}"
+conf_dir="$home_dir/.claude"
+oauth_file="$conf_dir/.credentials.json"
+mkdir -p "$conf_dir"
+
+step "检查官方 OAuth 凭据"
+if [[ -f "$oauth_file" ]]; then
+  if [[ $KEEP_OAUTH -eq 1 ]]; then
+    warn "检测到 $oauth_file 存在；--keep-oauth 指定，保留它（但 LiveToken 网关可能失效）"
+  else
+    stamp="$(date +%Y%m%d-%H%M%S)"
+    mv "$oauth_file" "$oauth_file.bak.$stamp"
+    ok "已备份并移除 → $oauth_file.bak.$stamp"
+    warn "原因：Claude Code 在 .credentials.json 存在时优先用官方 OAuth，会忽略 ANTHROPIC_API_KEY/ANTHROPIC_BASE_URL。"
+  fi
+else
+  ok "未发现官方 OAuth 凭据，无需清理"
+fi
+
+# ---------------------------------------------------------------------------
 # 4. write ~/.claude/settings.json
 # ---------------------------------------------------------------------------
 step "写入 ~/.claude/settings.json"
-home_dir="${HOME:-/}"
-conf_dir="$home_dir/.claude"
 conf="$conf_dir/settings.json"
-mkdir -p "$conf_dir"
 if [[ -f "$conf" ]]; then
   stamp="$(date +%Y%m%d-%H%M%S)"
   cp "$conf" "$conf.bak.$stamp"

@@ -29,6 +29,7 @@ interface InstallSessionControllerDeps {
   loadSession(): Promise<string | null>
   mkdir(path: string): Promise<void>
   platform: string
+  rename(from: string, to: string): Promise<void>
   saveSession(serialized: string): Promise<void>
   userProfile: string
   writeFile(path: string, value: string): Promise<void>
@@ -58,6 +59,7 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
     exec: deps.exec,
     fileExists: deps.fileExists,
     mkdir: deps.mkdir,
+    rename: deps.rename,
     userProfile: deps.userProfile,
     writeFile: deps.writeFile
   })
@@ -157,6 +159,7 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
         await persistState()
         emitLog?.(event)
       },
+      rename: deps.rename,
       userProfile: deps.userProfile,
       writeFile: deps.writeFile
     })

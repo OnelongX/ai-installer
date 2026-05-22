@@ -13,6 +13,7 @@ describe('installer service', () => {
       }),
       fileExists: async () => false,
       mkdir: async () => {},
+      rename: async () => {},
       userProfile: 'C:\\Users\\Administrator',
       writeFile: async (path, value) => {
         writes.push({ path, value })
@@ -46,6 +47,7 @@ describe('installer service', () => {
       },
       fileExists: async () => true,
       mkdir: async () => {},
+      rename: async () => {},
       onLog: (event) => {
         logMessages.push(`${event.type}:${event.message}`)
       },
@@ -84,6 +86,7 @@ describe('installer service', () => {
       },
       fileExists: async () => true,
       mkdir: async () => {},
+      rename: async () => {},
       userProfile: 'C:\\Users\\Administrator',
       writeFile: async () => {}
     })
@@ -141,6 +144,7 @@ describe('installer service', () => {
       },
       fileExists: async () => true,
       mkdir: async () => {},
+      rename: async () => {},
       userProfile: 'C:\\Users\\Administrator',
       writeFile: async () => {}
     })

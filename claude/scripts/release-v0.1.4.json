@@ -1,0 +1,7 @@
+{
+  "tag_name": "v0.1.4",
+  "name": "v0.1.4 — Claude installer: fix OAuth-vs-gateway precedence",
+  "body": "v0.1.4 fixes the third-party gateway override silently being ignored when Claude has a cached `claude login` OAuth session.\n\n## What changed\n\n- Environment scan now detects `~/.claude/.credentials.json`\n- A new task `清除 Anthropic 官方 OAuth 凭据` is added to the install plan when needed\n- The credentials file is backed up to `.credentials.json.bak.<timestamp>` rather than hard-deleted\n- `install_claude.sh` mirrors the same logic; pass `--keep-oauth` to opt out\n- Plan / task labels updated\n\n## Download\n\n| 文件 | 类型 |\n|---|---|\n| `Claude-Installer-Portable-0.1.4.exe` | Claude · 便携 |\n| `Claude-Installer-Setup-0.1.4.exe` | Claude · NSIS |\n\nCodex 安装器仍是 0.1.2，未变。",
+  "draft": false,
+  "prerelease": false
+}

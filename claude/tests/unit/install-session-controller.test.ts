@@ -38,6 +38,7 @@ describe('install session controller', () => {
       fileExists: async () => true,
       loadSession: async () => storedSession,
       mkdir: async () => {},
+      rename: async () => {},
       platform: 'win32',
       saveSession: async (serialized) => {
         storedSession = serialized
@@ -104,6 +105,7 @@ describe('install session controller', () => {
         fileExists: async () => true,
         loadSession: async () => storedSession,
         mkdir: async () => {},
+        rename: async () => {},
         platform: 'win32',
         saveSession: async (serialized) => {
           storedSession = serialized
@@ -156,6 +158,7 @@ describe('install session controller', () => {
       fileExists: async () => true,
       loadSession: async () => storedSession,
       mkdir: async () => {},
+      rename: async () => {},
       platform: 'win32',
       saveSession: async (serialized) => {
         storedSession = serialized

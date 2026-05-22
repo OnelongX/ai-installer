@@ -2,7 +2,7 @@
 
 一个 Windows 桌面工具，零配置帮你在本机装好 [Claude Code CLI](https://docs.anthropic.com/claude/docs/claude-code) 并接入 [LiveToken](https://livetoken.top/) 网关。
 
-![release](https://img.shields.io/badge/release-0.1.2-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
+![release](https://img.shields.io/badge/release-0.1.4-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
 
 ---
 
@@ -27,8 +27,8 @@
 
 | 类型 | 文件 | 适用场景 |
 |---|---|---|
-| 便携版 | [`Claude-Installer-Portable-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.3/Claude-Installer-Portable-0.1.3.exe) | 双击即用，不写注册表 |
-| 安装包 | [`Claude-Installer-Setup-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.3/Claude-Installer-Setup-0.1.3.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
+| 便携版 | [`Claude-Installer-Portable-0.1.4.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.4/Claude-Installer-Portable-0.1.4.exe) | 双击即用，不写注册表 |
+| 安装包 | [`Claude-Installer-Setup-0.1.4.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.4/Claude-Installer-Setup-0.1.4.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
 
 ## macOS / Linux / WSL
 
@@ -150,6 +150,23 @@ A：这是 Node 老版本 spawn 在 Windows 上的引号 bug。本工具内部�
 
 **Q：装完跑 `claude` 提示找不到命令？**
 A：必须开**新**终端窗口。环境变量更新只对新进程生效。
+
+**Q：装完跑 `claude` 还是连 Anthropic 官方，没走 LiveToken？**
+A：你之前跑过 `claude login` 走过 Anthropic OAuth。Claude Code 只要看到 `~/.claude/.credentials.json` 存在，就一直走 OAuth + 官方端点，把 `ANTHROPIC_API_KEY` 和 `ANTHROPIC_BASE_URL` 全部忽略掉。
+- v0.1.4 起，安装器和 `install_claude.sh` 都会自动检测并把这个文件备份成 `.bak.<时间戳>` 移走。
+- 如果你装的是更早的版本：手动跑一次
+  ```powershell
+  # Windows
+  claude logout
+  Remove-Item "$env:USERPROFILE\.claude\.credentials.json" -ErrorAction SilentlyContinue
+  ```
+  ```bash
+  # macOS / Linux
+  claude logout
+  rm -f ~/.claude/.credentials.json
+  ```
+  然后关掉所有终端，重开一个再跑 `claude`。
+- 要保留官方 OAuth 不动？bash 装时加 `--keep-oauth`；Electron 装时安装计划页面里手动取消"清除 Anthropic 官方 OAuth 凭据"那一步。
 
 **Q：要换 base URL 或换模型？**
 A：直接编辑 `%USERPROFILE%\.claude\settings.json`。Claude Code 启动时读这个文件。

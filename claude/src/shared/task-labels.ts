@@ -1,4 +1,5 @@
 const taskLabels = {
+  'clear-anthropic-oauth': '清除 Anthropic 官方 OAuth 凭据',
   'install-claude': '安装 Claude Code CLI',
   'install-node': '安装 Node.js',
   'persist-anthropic-api-key': '写入 ANTHROPIC_API_KEY',

@@ -10,6 +10,11 @@ import type {
 } from '../../shared/ipc'
 import { isApiKeyValueValid } from '../../renderer/features/api-key/api-key-state'
 import { buildInstallPlan } from './plan'
+import {
+  clearOAuthCredentials,
+  detectOAuthCredentials,
+  getOAuthCredentialsPath
+} from './tasks/clear-anthropic-oauth'
 import { createConfigDetectionItem } from './tasks/detect-config'
 import { detectClaude } from './tasks/detect-claude'
 import { detectNode } from './tasks/detect-node'
@@ -38,6 +43,7 @@ interface InstallerServiceDeps {
   fileExists(path: string): Promise<boolean>
   mkdir(path: string): Promise<void>
   onLog?(event: InstallLogEvent): Promise<void> | void
+  rename(from: string, to: string): Promise<void>
   userProfile: string
   writeFile(path: string, value: string): Promise<void>
 }
@@ -152,7 +158,11 @@ export function createInstallerService(deps: InstallerServiceDeps) {
     },
 
     async generatePlan(input: GeneratePlanRequest) {
-      return buildInstallPlan(input)
+      const oauth = await detectOAuthCredentials(
+        { fileExists: deps.fileExists },
+        deps.userProfile
+      )
+      return buildInstallPlan({ ...input, oauthCredentialsExist: oauth.exists })
     },
 
     async startInstall(input: StartInstallRequest): Promise<InstallExecutionResult> {
@@ -270,6 +280,35 @@ export function createInstallerService(deps: InstallerServiceDeps) {
                 throw new Error(result.stderr || 'API Key 写入失败')
               }
               await emitCommandResult(task, result)
+              break
+            }
+            case 'clear-anthropic-oauth': {
+              const credPath = getOAuthCredentialsPath(deps.userProfile)
+              await emitLog({
+                level: 'info',
+                message: `检测 ${credPath}`,
+                taskId: task,
+                type: 'task-output'
+              })
+              const result = await clearOAuthCredentials(
+                { fileExists: deps.fileExists, rename: deps.rename },
+                deps.userProfile
+              )
+              if (result.cleared) {
+                await emitLog({
+                  level: 'info',
+                  message: `已备份并移除官方 OAuth 凭据 → ${result.backupPath}`,
+                  taskId: task,
+                  type: 'task-output'
+                })
+              } else {
+                await emitLog({
+                  level: 'info',
+                  message: '没有发现官方 OAuth 凭据，跳过',
+                  taskId: task,
+                  type: 'task-output'
+                })
+              }
               break
             }
             case 'write-config': {

@@ -168,6 +168,7 @@ function registerInstallerIpc() {
     },
     mkdir: (targetPath) => fs.mkdir(targetPath, { recursive: true }),
     platform: process.platform,
+    rename: (from, to) => fs.rename(from, to),
     saveSession: (serialized) => fs.writeFile(sessionPath, serialized, 'utf8'),
     userProfile,
     writeFile: (targetPath, value) => fs.writeFile(targetPath, value, 'utf8')
