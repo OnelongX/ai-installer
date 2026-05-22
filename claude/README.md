@@ -152,7 +152,13 @@ A：这是 Node 老版本 spawn 在 Windows 上的引号 bug。本工具内部�
 A：必须开**新**终端窗口。环境变量更新只对新进程生效。
 
 **Q：装完跑 `claude` 还是连 Anthropic 官方，没走 LiveToken？**
-A：你之前跑过 `claude login` 走过 Anthropic OAuth。Claude Code 只要看到 `~/.claude/.credentials.json` 存在，就一直走 OAuth + 官方端点，把 `ANTHROPIC_API_KEY` 和 `ANTHROPIC_BASE_URL` 全部忽略掉。
+A：你之前跑过 `claude login` 走过 Anthropic OAuth，`~/.claude/.credentials.json` 里缓存了 Access Token。**实测**：
+- `ANTHROPIC_BASE_URL` 永远被遵守（请求确实发到 gateway）
+- 但 `Authorization: Bearer ...` 头会用**缓存的 OAuth token 而不是你的 LiveToken Key**，gateway 收到一个无效的 sk-ant-oat01-xxx，返回 401
+
+证据：仓库里有个 [`scripts/verify-gateway.mjs`](scripts/verify-gateway.mjs)，起一个本地假 gateway 把 claude 的请求抓下来。带 credentials 时抓到的就是 `sk-ant-oat01-xxx` —— 不是我们 export 的 token。
+
+修法：删掉 / 备份走 credentials。
 - v0.1.4 起，安装器和 `install_claude.sh` 都会自动检测并把这个文件备份成 `.bak.<时间戳>` 移走。
 - 如果你装的是更早的版本：手动跑一次
   ```powershell
@@ -186,11 +192,33 @@ A：
 git clone https://github.com/OnelongX/ai-installer.git
 cd ai-installer
 npm install
-npm test                    # 跑 67 个单测 + 组件测试
+npm test                    # 跑 74 个单测 + 组件测试
 npm run build               # 输出 out/
 npm run pack:win            # 出便携版 release/*.exe
 npm run dist:win            # 出 NSIS 安装包
 ```
+
+## 真机验证 gateway 配置是否生效
+
+`scripts/verify-gateway.mjs` 是一个端到端的回归测试：
+
+1. 在 `127.0.0.1:19999` 起一个假的 Anthropic Messages API（支持 streaming + `/v1/models`）
+2. 用 `ANTHROPIC_BASE_URL=http://127.0.0.1:19999` + `ANTHROPIC_AUTH_TOKEN=test-xxx` 跑一次 `claude -p "say ok"`
+3. 把假 gateway 收到的请求 dump 出来，对几条关键断言打勾：
+   - 请求确实到了 mock，不是 api.anthropic.com
+   - `Authorization: Bearer ...` 用的是**我们 set 的 token**，不是缓存的 OAuth token
+   - 系统提示**第一块没有** `cch` / `x-anthropic-billing-header`（`CLAUDE_CODE_ATTRIBUTION_HEADER=0` 起作用）
+   - model 字段是 claude-family
+   - 没有 `tool_reference` 块（说明不需要 `ENABLE_TOOL_SEARCH=true`）
+
+```bash
+# 跑：
+node scripts/verify-gateway.mjs
+
+# 退出码 0 = 全通过；1 = 有断言失败
+```
+
+> 如果你跑过 `claude login`，**这个测试会暴露问题**：Bearer 头里是缓存的 OAuth token，而不是测试的 fake token。这就是 v0.1.4 必须先清 `.credentials.json` 的原因。我把 credentials 备份移走后再跑，就 6/6 全过了。
 
 需要：Node ≥ 20、Windows 10/11、winget（系统自带）。
 
