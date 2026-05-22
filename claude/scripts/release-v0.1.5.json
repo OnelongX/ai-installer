@@ -1,0 +1,7 @@
+{
+  "tag_name": "v0.1.5",
+  "name": "v0.1.5 — sync to 2026-05 model lineup, Sonnet 4.6 + High effort",
+  "body": "## What changed\n\n- Default model bumped: `claude-sonnet-4-5` → `claude-sonnet-4-6`\n- Small/fast model split: now defaults to `claude-haiku-4-5` (was Sonnet 4.5 for both)\n- New `effortLevel: high` in settings.json (matches Claude Code 2.1.140 picker)\n- `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` flipped to `1` (no updater/telemetry/feedback)\n- README documents the full model lineup: opus-4-7 / opus-4-7-1m / sonnet-4-6 / haiku-4-5 / opus-4-6 legacy\n\n## Verified\n\n- 74 unit + component tests pass\n- `scripts/verify-gateway.mjs` 6/6 (request hits gateway, Bearer token correct, no cch block, model forwarded)\n- Packaged smoke test green\n\n## Download\n\n| 文件 | 类型 |\n|---|---|\n| `Claude-Installer-Portable-0.1.5.exe` | Claude · 便携 |\n| `Claude-Installer-Setup-0.1.5.exe` | Claude · NSIS |",
+  "draft": false,
+  "prerelease": false
+}

@@ -8,16 +8,19 @@ import {
 } from '../../src/main/installer/tasks/write-config.windows'
 
 describe('windows settings.json generation', () => {
-  it('writes the LiveToken provider template with claude-sonnet-4-5 defaults', () => {
+  it('writes the LiveToken provider template with claude-sonnet-4-6 defaults', () => {
     const json = buildSettingsJson({ mode: 'official' })
     const parsed = JSON.parse(json)
 
-    expect(parsed.model).toBe('claude-sonnet-4-5')
+    expect(parsed.model).toBe('claude-sonnet-4-6')
+    expect(parsed.effortLevel).toBe('high')
     expect(parsed.env.ANTHROPIC_BASE_URL).toBe('https://livetoken.top')
-    expect(parsed.env.ANTHROPIC_MODEL).toBe('claude-sonnet-4-5')
+    expect(parsed.env.ANTHROPIC_MODEL).toBe('claude-sonnet-4-6')
+    expect(parsed.env.ANTHROPIC_SMALL_FAST_MODEL).toBe('claude-haiku-4-5')
     // Force-off the per-request attribution header so third-party Anthropic
     // gateways can keep prefix caches hot — see write-config.windows.ts.
     expect(parsed.env.CLAUDE_CODE_ATTRIBUTION_HEADER).toBe('0')
+    expect(parsed.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC).toBe('1')
     expect(parsed.permissions).toEqual({ defaultMode: 'acceptEdits' })
     expect(json.endsWith('\n')).toBe(true)
   })

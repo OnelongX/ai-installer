@@ -19,7 +19,9 @@ set -euo pipefail
 
 API_KEY="${API_KEY:-}"
 BASE_URL="https://livetoken.top"
-DEFAULT_MODEL="claude-sonnet-4-5"
+DEFAULT_MODEL="claude-sonnet-4-6"
+SMALL_FAST_MODEL="claude-haiku-4-5"
+DEFAULT_EFFORT="high"
 NPM_PACKAGE="@anthropic-ai/claude-code"
 SKIP_NODE=0
 SKIP_RC=0
@@ -192,11 +194,12 @@ cat > "$conf" <<JSON
   "env": {
     "ANTHROPIC_BASE_URL": "$BASE_URL",
     "ANTHROPIC_MODEL": "$DEFAULT_MODEL",
-    "ANTHROPIC_SMALL_FAST_MODEL": "$DEFAULT_MODEL",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "0",
+    "ANTHROPIC_SMALL_FAST_MODEL": "$SMALL_FAST_MODEL",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
   },
   "model": "$DEFAULT_MODEL",
+  "effortLevel": "$DEFAULT_EFFORT",
   "permissions": { "defaultMode": "acceptEdits" },
   "autoUpdaterStatus": "enabled",
   "includeCoAuthoredBy": false

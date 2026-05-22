@@ -2,7 +2,7 @@
 
 一个 Windows 桌面工具，零配置帮你在本机装好 [Claude Code CLI](https://docs.anthropic.com/claude/docs/claude-code) 并接入 [LiveToken](https://livetoken.top/) 网关。
 
-![release](https://img.shields.io/badge/release-0.1.4-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
+![release](https://img.shields.io/badge/release-0.1.5-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
 
 ---
 
@@ -27,8 +27,8 @@
 
 | 类型 | 文件 | 适用场景 |
 |---|---|---|
-| 便携版 | [`Claude-Installer-Portable-0.1.4.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.4/Claude-Installer-Portable-0.1.4.exe) | 双击即用，不写注册表 |
-| 安装包 | [`Claude-Installer-Setup-0.1.4.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.4/Claude-Installer-Setup-0.1.4.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
+| 便携版 | [`Claude-Installer-Portable-0.1.5.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.5/Claude-Installer-Portable-0.1.5.exe) | 双击即用，不写注册表 |
+| 安装包 | [`Claude-Installer-Setup-0.1.5.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.5/Claude-Installer-Setup-0.1.5.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
 
 ## macOS / Linux / WSL
 
@@ -122,17 +122,20 @@ claude
 {
   "env": {
     "ANTHROPIC_BASE_URL": "https://livetoken.top",
-    "ANTHROPIC_MODEL": "claude-sonnet-4-5",
-    "ANTHROPIC_SMALL_FAST_MODEL": "claude-sonnet-4-5",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "0",
+    "ANTHROPIC_MODEL": "claude-sonnet-4-6",
+    "ANTHROPIC_SMALL_FAST_MODEL": "claude-haiku-4-5",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
   },
-  "model": "claude-sonnet-4-5",
+  "model": "claude-sonnet-4-6",
+  "effortLevel": "high",
   "permissions": { "defaultMode": "acceptEdits" },
   "autoUpdaterStatus": "enabled",
   "includeCoAuthoredBy": false
 }
 ```
+
+> 想换模型直接改这个文件。2026-05 当前可用：`claude-opus-4-7` · `claude-opus-4-7-1m` · `claude-sonnet-4-6` · `claude-haiku-4-5` · `claude-opus-4-6`（legacy）。Effort 可选 `low / medium / high / xhigh / max`。
 
 想换模型 / 网关，直接改这个文件即可。
 
