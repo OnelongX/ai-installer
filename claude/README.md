@@ -135,7 +135,9 @@ claude
 }
 ```
 
-> 想换模型直接改这个文件。2026-05 当前可用：`claude-opus-4-7` · `claude-opus-4-7-1m` · `claude-sonnet-4-6` · `claude-haiku-4-5` · `claude-opus-4-6`（legacy）。Effort 可选 `low / medium / high / xhigh / max`。
+> 想换模型直接改这个文件。2026-05 当前可用 model id：`claude-opus-4-7` · `claude-sonnet-4-6` · `claude-haiku-4-5` · `claude-opus-4-6`（legacy）。Effort 可选 `low / medium / high / xhigh / max`。
+>
+> **关于 picker 里的 "Opus 4.7 1M"**：那不是单独的 model id，model id 还是 `claude-opus-4-7`，1M 指的是 context window。Opus 4.7 / Sonnet 4.6 自 2026-03 起 1M context **已经 GA、不需要 beta header**；老的 `context-1m-2025-08-07` beta header 在 2026-04-30 已被 Anthropic 关掉。picker 里多出来那一行是个 UI 上的偏好（默认 200k 截断 vs 不截断），实际请求 body 里 `model` 字段都是 `claude-opus-4-7`。
 
 想换模型 / 网关，直接改这个文件即可。
 
