@@ -1,8 +1,8 @@
 # Claude 安装器 · ai-installer
 
-一个 Windows 桌面工具，零配置帮你在本机装好 [Claude Code CLI](https://docs.anthropic.com/claude/docs/claude-code) 并接入 [LiveToken](https://livetoken.top/) 网关。
+一个 Windows 桌面工具，零配置帮你在本机装好 [Claude Code CLI](https://docs.anthropic.com/claude/docs/claude-code) **和 Claude Desktop**，并接入 [SolaEon](https://ai-api.solaeon.com)（默认）或 [LiveToken](https://livetoken.top/) 网关。
 
-![release](https://img.shields.io/badge/release-0.1.5-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
+![release](https://img.shields.io/badge/release-0.1.6-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
 
 ---
 
@@ -13,9 +13,12 @@
 | ① 检测 | 检查 Node.js、Claude Code CLI、`~/.claude/settings.json` 是否就位 |
 | ② 装 Node | 缺则用 `winget install OpenJS.NodeJS.LTS` 自动装上 |
 | ③ 装 CLI | `npm i -g @anthropic-ai/claude-code` |
-| ④ 写 Key | `ANTHROPIC_API_KEY` 写入 Windows 用户环境变量 |
-| ⑤ 写配置 | 在 `%USERPROFILE%\.claude\settings.json` 写好默认模型、BASE_URL 等 |
-| ⑥ 验证 | `claude --version` 跑通即成功 |
+| ④ 验证网关 | 写配置前先 GET `网关/v1/models`，7 个模型缺一个就报错停 |
+| ⑤ 写 CLI 配置 | `~/.claude/settings.json`：`ANTHROPIC_AUTH_TOKEN` + 7 模型白名单 + tier 默认 |
+| ⑥ 写 Desktop 配置 | `HKCU\Software\Policies\Claude` 托管配置，桌面版菜单出 7 模型 + 3 个 1M |
+| ⑦ 验证 | `claude --version` 跑通即成功 |
+
+**模型服务网关**（API Key 页选）：SolaEon（默认，`https://ai-api.solaeon.com`）或 LiveToken（`https://livetoken.top`）。两者都是 HTTPS —— Claude 只接受 HTTPS 网关。
 
 所有失败步骤都能单独**重试**，关掉重开还能从上次失败处**继续**。
 
@@ -27,8 +30,8 @@
 
 | 类型 | 文件 | 适用场景 |
 |---|---|---|
-| 便携版 | [`Claude-Installer-Portable-0.1.5.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.5/Claude-Installer-Portable-0.1.5.exe) | 双击即用，不写注册表 |
-| 安装包 | [`Claude-Installer-Setup-0.1.5.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.5/Claude-Installer-Setup-0.1.5.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
+| 便携版 | [`Claude-Installer-Portable-0.1.6.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.6/Claude-Installer-Portable-0.1.6.exe) | 双击即用，不写注册表 |
+| 安装包 | [`Claude-Installer-Setup-0.1.6.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.6/Claude-Installer-Setup-0.1.6.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
 
 ## macOS / Linux / WSL
 
@@ -116,30 +119,34 @@ claude
 
 ## 默认配置长啥样
 
-安装完成后 `%USERPROFILE%\.claude\settings.json`：
+安装完成后 `%USERPROFILE%\.claude\settings.json`（Claude Code CLI）：
 
 ```json
 {
   "env": {
-    "ANTHROPIC_BASE_URL": "https://livetoken.top",
-    "ANTHROPIC_MODEL": "claude-sonnet-4-6",
-    "ANTHROPIC_SMALL_FAST_MODEL": "claude-haiku-4-5",
+    "ANTHROPIC_BASE_URL": "https://ai-api.solaeon.com",
+    "ANTHROPIC_AUTH_TOKEN": "sk-...",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5",
+    "API_TIMEOUT_MS": "300000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
   },
-  "model": "claude-sonnet-4-6",
-  "effortLevel": "high",
+  "model": "claude-opus-4-8",
+  "availableModels": [
+    "claude-sonnet-5", "claude-opus-4-8", "claude-haiku-4-5",
+    "claude-sonnet-4-6", "claude-opus-4-7", "claude-opus-4-6", "claude-fable-5"
+  ],
   "permissions": { "defaultMode": "acceptEdits" },
   "autoUpdaterStatus": "enabled",
   "includeCoAuthoredBy": false
 }
 ```
 
-> 想换模型直接改这个文件。2026-05 当前可用 model id：`claude-opus-4-7` · `claude-sonnet-4-6` · `claude-haiku-4-5` · `claude-opus-4-6`（legacy）。Effort 可选 `low / medium / high / xhigh / max`。
->
-> **关于 picker 里的 "Opus 4.7 1M"**：那不是单独的 model id，model id 还是 `claude-opus-4-7`，1M 指的是 context window。Opus 4.7 / Sonnet 4.6 自 2026-03 起 1M context **已经 GA、不需要 beta header**；老的 `context-1m-2025-08-07` beta header 在 2026-04-30 已被 Anthropic 关掉。picker 里多出来那一行是个 UI 上的偏好（默认 200k 截断 vs 不截断），实际请求 body 里 `model` 字段都是 `claude-opus-4-7`。
+同时写入 Claude Desktop 托管配置 `HKCU\Software\Policies\Claude`（`inferenceProvider=gateway` + 7 模型 `inferenceModels`），桌面版模型菜单会出全部 7 个模型，其中 Sonnet 5 / Opus 4.8 / Fable 5 额外生成 1M 变体。
 
-想换模型 / 网关，直接改这个文件即可。
+> 想换模型 / 网关，直接改 `settings.json`。7 个模型：`claude-sonnet-5` · `claude-opus-4-8` · `claude-haiku-4-5` · `claude-sonnet-4-6` · `claude-opus-4-7` · `claude-opus-4-6` · `claude-fable-5`。**认证走 `ANTHROPIC_AUTH_TOKEN`（Bearer）**，这是官方 gateway 推荐的方式；base_url 必须是 HTTPS。
 
 > **关于 `CLAUDE_CODE_ATTRIBUTION_HEADER=0`**：Claude Code 自 2.1.36 起会在每个请求的 system prompt 第一块塞一个 `x-anthropic-billing-header`，其中 `cch` 字段每次请求随机变化。Anthropic 自家服务端会剥掉它再算 prefix-cache key，但**所有第三方 Anthropic 兼容代理（LiveToken / Bedrock / vLLM 等）都不知道**，会把它当成 prompt 的一部分参与缓存哈希，导致 prefix cache 永远不命中，token 消耗暴涨、推理变慢。这个 env 把 header 关掉，缓存命中恢复正常。
 

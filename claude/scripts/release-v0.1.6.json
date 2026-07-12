@@ -1,0 +1,7 @@
+{
+  "tag_name": "v0.1.6",
+  "name": "v0.1.6 — SolaEon 网关 + Claude Desktop 配置 + 装前验证",
+  "body": "把 Claude-Desktop-SolaEon 包的能力移植进 Electron Claude 安装器。\n\n## 新能力\n\n- **模型服务网关选择**：API Key 页新增 SolaEon（默认）/ LiveToken 选择器。两者都是 HTTPS —— Claude 只接受 HTTPS 网关，http:// 会被客户端拒。\n- **7 模型阵容**：`claude-sonnet-5` / `claude-opus-4-8` / `claude-haiku-4-5` / `claude-sonnet-4-6` / `claude-opus-4-7` / `claude-opus-4-6` / `claude-fable-5`，其中 sonnet-5 / opus-4-8 / fable-5 生成 1M 上下文变体。默认 `claude-opus-4-8`。\n- **Claude Desktop 支持**：写 `HKCU\\Software\\Policies\\Claude` 托管配置，让桌面版模型菜单出全部 7 模型 + 3 个 1M（含写后校验）。\n- **CLI 配置对齐 SolaEon 布局**：`settings.json` 用 `ANTHROPIC_AUTH_TOKEN`（Bearer，官方 gateway 推荐），tier 默认模型、`API_TIMEOUT_MS`、`availableModels[7]`，保留 `CLAUDE_CODE_ATTRIBUTION_HEADER=0` 保 prefix cache。\n- **装前网关验证**：写配置前先 GET `base/v1/models`（Bearer），7 个模型缺任何一个就报错停下 —— 不再静默指向失效网关。\n- 环境变量从 `ANTHROPIC_API_KEY` 改为 `ANTHROPIC_AUTH_TOKEN`。\n\n## 任务流\n\ninstall-node → install-claude → persist → clear-oauth → verify-gateway → write-config → write-desktop-registry → verify-runtime\n\n## Verified\n\n- 96 unit + component tests pass\n- Packaged smoke test green\n\n## Download\n\n| 文件 | 类型 |\n|---|---|\n| `Claude-Installer-Portable-0.1.6.exe` | Claude · 便携 |\n| `Claude-Installer-Setup-0.1.6.exe` | Claude · NSIS |",
+  "draft": false,
+  "prerelease": false
+}

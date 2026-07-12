@@ -28,12 +28,12 @@
 
 ## 下载
 
-最新版本：[Releases v0.1.5](https://github.com/OnelongX/ai-installer/releases/tag/v0.1.5)（Claude 0.1.5 / Codex 0.1.3）
+最新版本：[Releases v0.1.6](https://github.com/OnelongX/ai-installer/releases/tag/v0.1.6)（Claude 0.1.6 / Codex 0.1.3）
 
 | 文件 | 类型 |
 |---|---|
-| [`Claude-Installer-Portable-0.1.5.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.5/Claude-Installer-Portable-0.1.5.exe) | Claude · 便携 |
-| [`Claude-Installer-Setup-0.1.5.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.5/Claude-Installer-Setup-0.1.5.exe) | Claude · NSIS |
+| [`Claude-Installer-Portable-0.1.6.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.6/Claude-Installer-Portable-0.1.6.exe) | Claude · 便携 |
+| [`Claude-Installer-Setup-0.1.6.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.6/Claude-Installer-Setup-0.1.6.exe) | Claude · NSIS |
 | [`Codex-Installer-Portable-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/codex-v0.1.3/Codex-Installer-Portable-0.1.3.exe) | Codex · 便携 |
 | [`Codex-Installer-Setup-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/codex-v0.1.3/Codex-Installer-Setup-0.1.3.exe) | Codex · NSIS |
 
