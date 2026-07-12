@@ -17,6 +17,7 @@ describe('app execution stream', () => {
     const client = {
       dismissRecoveryState: async () => {},
       exportDiagnostics: async () => '',
+      getExistingApiKey: async () => ({ exists: false }),
       generatePlan: async () => ({
         summary: '在这台电脑上安装 Claude',
         tasks: ['install-claude', 'verify-claude-runtime']

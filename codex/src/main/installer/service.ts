@@ -11,6 +11,7 @@ import type {
 import { isApiKeyValueValid } from '../../renderer/features/api-key/api-key-state'
 import { resolveProvider } from '../../shared/provider-config'
 import { buildInstallPlan } from './plan'
+import { checkGatewayReachable } from './tasks/detect-gateway'
 import { createConfigDetectionItem } from './tasks/detect-config'
 import { probeSolaeonInternal } from './tasks/detect-network'
 import { detectCodex } from './tasks/detect-codex'
@@ -189,6 +190,27 @@ export function createInstallerService(deps: InstallerServiceDeps) {
         await deps.onLog?.(event)
       }
 
+      // Resolve the provider once (probing the Solaeon LAN in auto mode) so
+      // verify-gateway and write-config agree on the same base_url.
+      const resolveOnce = (() => {
+        let cached: Awaited<ReturnType<typeof resolveProviderForRun>> | null = null
+        const resolveProviderForRun = async () => {
+          const providerId = input.provider ?? 'livetoken'
+          const networkMode = input.networkMode ?? 'auto'
+          let internalReachable = false
+          if (providerId === 'solaeon' && networkMode === 'auto') {
+            internalReachable = await probeSolaeonInternal()
+          }
+          return resolveProvider(providerId, networkMode, internalReachable)
+        }
+        return async () => {
+          if (!cached) {
+            cached = await resolveProviderForRun()
+          }
+          return cached
+        }
+      })()
+
       const emitCommandResult = async (taskId: string, result: ExecResult) => {
         const stdout = result.stdout.trim()
         const stderr = result.stderr.trim()
@@ -295,31 +317,30 @@ export function createInstallerService(deps: InstallerServiceDeps) {
               await emitCommandResult(task, result)
               break
             }
-            case 'write-config': {
-              const providerId = input.provider ?? 'livetoken'
-              const networkMode = input.networkMode ?? 'auto'
-
-              // For Solaeon in auto mode, probe the LAN box now and pick the
-              // reachable address. livetoken and forced internal/external skip
-              // the probe entirely.
-              let internalReachable = false
-              if (providerId === 'solaeon' && networkMode === 'auto') {
-                internalReachable = await probeSolaeonInternal()
-                await emitLog({
-                  level: 'info',
-                  message: internalReachable
-                    ? '内网 192.168.1.101:48760 可达，使用内网地址'
-                    : '内网不可达，回落到外网 ai-api.solaeon.com',
-                  taskId: task,
-                  type: 'task-output'
-                })
+            case 'verify-gateway': {
+              const resolvedProvider = await resolveOnce()
+              await emitLog({
+                level: 'info',
+                message: `探测网关 ${resolvedProvider.name}（${resolvedProvider.baseUrl}）`,
+                taskId: task,
+                type: 'task-output'
+              })
+              const check = await checkGatewayReachable(resolvedProvider, input.apiKey)
+              if (!check.ok) {
+                throw new Error(
+                  `网关不可达（${resolvedProvider.name}）：${check.error ?? '未知错误'}`
+                )
               }
-
-              const resolvedProvider = resolveProvider(
-                providerId,
-                networkMode,
-                internalReachable
-              )
+              await emitLog({
+                level: 'info',
+                message: `网关就绪，返回 ${check.modelCount} 个模型`,
+                taskId: task,
+                type: 'task-output'
+              })
+              break
+            }
+            case 'write-config': {
+              const resolvedProvider = await resolveOnce()
 
               await emitLog({
                 level: 'info',

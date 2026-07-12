@@ -23,6 +23,7 @@ describe('app recovery flow', () => {
           dismissRecoveryState: async () => {},
           exportDiagnostics: async () =>
             ['# Claude 安装器诊断报告', '', '日志：', '- network timed out'].join('\n'),
+          getExistingApiKey: async () => ({ exists: false }),
           generatePlan: async () => ({
             summary: '在这台电脑上安装 Claude',
             tasks: ['install-claude']

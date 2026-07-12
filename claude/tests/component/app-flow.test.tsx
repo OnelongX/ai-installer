@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import App from '../../src/renderer/App'
+import { getInstallerClient } from '../../src/renderer/install-flow/client'
 
 describe('app flow', () => {
   afterEach(() => {
@@ -40,11 +41,27 @@ describe('app flow', () => {
   })
 
   it('moves forward when reusing an existing key', async () => {
-    render(<App />)
+    // The reuse card only shows when the backend reports a detected key.
+    const client = {
+      ...getInstallerClient(),
+      getExistingApiKey: async () => ({ exists: true as const, mask: 'sk-***1234' })
+    }
+    render(<App installerClient={client} />)
 
     fireEvent.click(await screen.findByRole('button', { name: /sk-\*\*\*1234/i }))
     fireEvent.click(screen.getByRole('button', { name: '继续', exact: true }))
 
     expect(await screen.findByText('环境检测')).toBeInTheDocument()
+  })
+
+  it('hides the reuse card when no existing key is detected', async () => {
+    const client = {
+      ...getInstallerClient(),
+      getExistingApiKey: async () => ({ exists: false as const })
+    }
+    render(<App installerClient={client} />)
+
+    await screen.findByRole('button', { name: /输入新的 Key/i })
+    expect(screen.queryByText('继续使用已检测到的 Key')).not.toBeInTheDocument()
   })
 })

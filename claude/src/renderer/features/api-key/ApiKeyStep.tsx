@@ -193,13 +193,7 @@ export function ApiKeyStep({
             }}
           >
             <span>API Key</span>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr auto',
-                gap: '12px'
-              }}
-            >
+            <div style={{ position: 'relative' }}>
               <input
                 aria-label="API Key"
                 type={showValue ? 'text' : 'password'}
@@ -211,22 +205,41 @@ export function ApiKeyStep({
                 placeholder="sk-..."
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   borderRadius: '16px',
                   border: '1px solid rgba(148, 163, 184, 0.28)',
                   background: 'rgba(2, 6, 23, 0.66)',
                   color: '#f8fafc',
-                  padding: '14px 16px'
+                  padding: '14px 76px 14px 16px',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  letterSpacing: '0.02em'
                 }}
               />
               <button
                 type="button"
                 onClick={() => setShowValue((current) => !current)}
+                aria-label={showValue ? '隐藏 API Key' : '显示 API Key'}
                 style={{
-                  borderRadius: '16px',
-                  border: '1px solid rgba(148, 163, 184, 0.28)',
-                  background: 'rgba(15, 23, 42, 0.88)',
-                  color: '#f8fafc',
-                  padding: '0 16px'
+                  position: 'absolute',
+                  top: '50%',
+                  right: '8px',
+                  transform: 'translateY(-50%)',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'rgba(148, 163, 184, 0.9)',
+                  padding: '6px 10px',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  borderRadius: '10px',
+                  transition: 'color 0.15s, background 0.15s'
+                }}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.color = '#e0f2fe'
+                  event.currentTarget.style.background = 'rgba(56, 189, 248, 0.12)'
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.color = 'rgba(148, 163, 184, 0.9)'
+                  event.currentTarget.style.background = 'transparent'
                 }}
               >
                 {showValue ? '隐藏' : '显示'}

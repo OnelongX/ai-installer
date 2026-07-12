@@ -2,42 +2,52 @@
 #
 # install_claude.sh — 一行命令在 macOS / Linux / WSL 上把 Claude Code 装到位
 #
-# 做的事和 Windows 上的 Claude 安装器一一对位：
+# 做的事和 Windows 上的 Claude 安装器 (v0.1.6) 一一对位：
 #   1. 检测 / 安装 Node.js (brew / apt / dnf / pacman / zypper / fnm 兜底)
 #   2. npm i -g @anthropic-ai/claude-code
-#   3. 写 ~/.claude/settings.json (LiveToken provider + claude-sonnet-4-5
-#      + CLAUDE_CODE_ATTRIBUTION_HEADER=0 防 prefix cache 失效)
-#   4. 把 ANTHROPIC_API_KEY + ANTHROPIC_BASE_URL 写进 ~/.zshrc / ~/.bashrc
-#   5. 跑 claude --version 验证
+#   3. 装前验证网关 /v1/models（Bearer），7 个模型缺一个就停
+#   4. 写 ~/.claude/settings.json：ANTHROPIC_AUTH_TOKEN + 7 模型白名单 + tier 默认
+#      + CLAUDE_CODE_ATTRIBUTION_HEADER=0 防 prefix cache 失效
+#   5. 把 ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL 写进 ~/.zshrc / ~/.bashrc
+#   6. 跑 claude --version 验证
+#
+# 默认网关 SolaEon (https://ai-api.solaeon.com)，可 --provider livetoken 切换。
+# 注意：Claude 只支持 HTTPS 网关；Desktop 注册表配置是 Windows 专属，本脚本不涉及。
 #
 # 用法：
 #   ./install_claude.sh                                          # 交互式
-#   ./install_claude.sh --api-key sk-ant-xxx
-#   curl -fsSL https://raw.githubusercontent.com/OnelongX/ai-installer/main/claude/install_claude.sh | bash -s -- --api-key sk-ant-xxx
+#   ./install_claude.sh --api-key sk-xxx
+#   ./install_claude.sh --api-key sk-xxx --provider livetoken
+#   curl -fsSL https://raw.githubusercontent.com/OnelongX/ai-installer/main/claude/install_claude.sh | bash -s -- --api-key sk-xxx
 
 set -euo pipefail
 
 API_KEY="${API_KEY:-}"
-BASE_URL="https://livetoken.top"
-DEFAULT_MODEL="claude-sonnet-4-6"
-SMALL_FAST_MODEL="claude-haiku-4-5"
-DEFAULT_EFFORT="high"
+PROVIDER="solaeon"
+BASE_URL=""
+DEFAULT_MODEL="claude-opus-4-8"
 NPM_PACKAGE="@anthropic-ai/claude-code"
 SKIP_NODE=0
 SKIP_RC=0
+SKIP_VERIFY=0
 NON_INTERACTIVE=0
 KEEP_OAUTH=0
+
+# 7-model catalog (matches the Electron installer's provider-config).
+MODELS_JSON='["claude-sonnet-5","claude-opus-4-8","claude-haiku-4-5","claude-sonnet-4-6","claude-opus-4-7","claude-opus-4-6","claude-fable-5"]'
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --api-key)         API_KEY="$2"; shift 2 ;;
+    --provider)        PROVIDER="$2"; shift 2 ;;
     --base-url)        BASE_URL="$2"; shift 2 ;;
     --model)           DEFAULT_MODEL="$2"; shift 2 ;;
     --skip-node)       SKIP_NODE=1; shift ;;
     --skip-rc)         SKIP_RC=1; shift ;;
+    --skip-verify)     SKIP_VERIFY=1; shift ;;
     --keep-oauth)      KEEP_OAUTH=1; shift ;;
     --non-interactive) NON_INTERACTIVE=1; shift ;;
-    -h|--help) sed -n '2,18p' "$0" | sed 's/^#\s\?//'; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0" | sed 's/^#\s\?//'; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 2 ;;
   esac
 done
@@ -50,13 +60,28 @@ fail()  { printf "    ${red}[fail]${reset} %s\n" "$1" >&2; }
 has()   { command -v "$1" >/dev/null 2>&1; }
 
 # ---------------------------------------------------------------------------
-# 0. platform check
+# 0. platform check + resolve gateway
 # ---------------------------------------------------------------------------
 OS="$(uname -s)"
 case "$OS" in
   Darwin|Linux) ;;
   *) fail "不支持的系统：$OS。本脚本面向 macOS / Linux / WSL；Windows 请用 Claude 安装器。"; exit 1 ;;
 esac
+
+# Resolve base URL from provider unless one was passed explicitly.
+if [[ -z "$BASE_URL" ]]; then
+  case "$PROVIDER" in
+    solaeon)   BASE_URL="https://ai-api.solaeon.com" ;;
+    livetoken) BASE_URL="https://livetoken.top" ;;
+    *) fail "未知 provider：$PROVIDER（可选 solaeon | livetoken），或用 --base-url 直接指定。"; exit 1 ;;
+  esac
+fi
+
+# Claude only accepts HTTPS gateways.
+if [[ "$BASE_URL" != https://* ]]; then
+  fail "Claude 只支持 HTTPS 网关，但拿到的是 $BASE_URL。"
+  exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # 1. ensure Node + npm
@@ -128,15 +153,15 @@ fi
 # ---------------------------------------------------------------------------
 step "取 LiveToken API Key"
 if [[ -z "$API_KEY" ]]; then
-  API_KEY="${LIVETOKEN_API_KEY:-${ANTHROPIC_API_KEY:-}}"
-  [[ -n "$API_KEY" ]] && warn "复用环境变量里的 LIVETOKEN_API_KEY / ANTHROPIC_API_KEY"
+  API_KEY="${SOLAEON_API_KEY:-${LIVETOKEN_API_KEY:-${ANTHROPIC_AUTH_TOKEN:-${ANTHROPIC_API_KEY:-}}}}"
+  [[ -n "$API_KEY" ]] && warn "复用环境变量里已有的 Key"
 fi
 if [[ -z "$API_KEY" ]]; then
   if [[ $NON_INTERACTIVE -eq 1 ]]; then
     fail "非交互模式下必须传 --api-key。"
     exit 1
   fi
-  printf "请粘贴 LiveToken API Key (注册: https://livetoken.top): "
+  printf "请粘贴 %s API Key: " "$PROVIDER"
   stty -echo; read -r API_KEY; stty echo; printf "\n"
 fi
 API_KEY="${API_KEY// /}"
@@ -157,6 +182,37 @@ npm install -g "$NPM_PACKAGE"
 ok "npm i -g $NPM_PACKAGE 完成"
 
 # ---------------------------------------------------------------------------
+# 3.4 verify the gateway serves our models before writing anything
+# ---------------------------------------------------------------------------
+if [[ $SKIP_VERIFY -eq 0 ]]; then
+  step "验证网关 $BASE_URL/v1/models"
+  probe_tool=""
+  if has curl; then probe_tool="curl"; elif has wget; then probe_tool="wget"; fi
+  if [[ -z "$probe_tool" ]]; then
+    warn "没有 curl / wget，跳过网关验证"
+  else
+    if [[ "$probe_tool" == "curl" ]]; then
+      models_body="$(curl -fsS -H "Authorization: Bearer $API_KEY" -H 'anthropic-version: 2023-06-01' "$BASE_URL/v1/models" 2>/dev/null || true)"
+    else
+      models_body="$(wget -qO- --header="Authorization: Bearer $API_KEY" --header='anthropic-version: 2023-06-01' "$BASE_URL/v1/models" 2>/dev/null || true)"
+    fi
+    if [[ -z "$models_body" ]]; then
+      fail "网关 $BASE_URL/v1/models 无响应（网络 / Key / 地址有误）。确认后重试，或 --skip-verify 跳过。"
+      exit 1
+    fi
+    missing=""
+    for m in claude-sonnet-5 claude-opus-4-8 claude-haiku-4-5 claude-sonnet-4-6 claude-opus-4-7 claude-opus-4-6 claude-fable-5; do
+      case "$models_body" in *"\"$m\""*) ;; *) missing="$missing $m" ;; esac
+    done
+    if [[ -n "$missing" ]]; then
+      fail "网关缺少模型：$missing。确认网关配置后重试，或 --skip-verify 跳过。"
+      exit 1
+    fi
+    ok "网关就绪，7 个模型齐全"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # 3.5 clear stale Anthropic OAuth credentials (so env vars actually win)
 # ---------------------------------------------------------------------------
 home_dir="${HOME:-/}"
@@ -172,7 +228,7 @@ if [[ -f "$oauth_file" ]]; then
     stamp="$(date +%Y%m%d-%H%M%S)"
     mv "$oauth_file" "$oauth_file.bak.$stamp"
     ok "已备份并移除 → $oauth_file.bak.$stamp"
-    warn "原因：Claude Code 在 .credentials.json 存在时优先用官方 OAuth，会忽略 ANTHROPIC_API_KEY/ANTHROPIC_BASE_URL。"
+    warn "原因：Claude Code 在 .credentials.json 存在时优先用官方 OAuth，会忽略 ANTHROPIC_AUTH_TOKEN/ANTHROPIC_BASE_URL。"
   fi
 else
   ok "未发现官方 OAuth 凭据，无需清理"
@@ -193,22 +249,25 @@ cat > "$conf" <<JSON
 {
   "env": {
     "ANTHROPIC_BASE_URL": "$BASE_URL",
-    "ANTHROPIC_MODEL": "$DEFAULT_MODEL",
-    "ANTHROPIC_SMALL_FAST_MODEL": "$SMALL_FAST_MODEL",
+    "ANTHROPIC_AUTH_TOKEN": "$API_KEY",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5",
+    "API_TIMEOUT_MS": "300000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
   },
   "model": "$DEFAULT_MODEL",
-  "effortLevel": "$DEFAULT_EFFORT",
+  "availableModels": $MODELS_JSON,
   "permissions": { "defaultMode": "acceptEdits" },
   "autoUpdaterStatus": "enabled",
   "includeCoAuthoredBy": false
 }
 JSON
-ok "已写入 $conf"
+ok "已写入 $conf（provider=$PROVIDER, model=$DEFAULT_MODEL, 7 模型白名单）"
 
 # ---------------------------------------------------------------------------
-# 5. persist ANTHROPIC_API_KEY in shell rc
+# 5. persist ANTHROPIC_AUTH_TOKEN in shell rc
 # ---------------------------------------------------------------------------
 if [[ $SKIP_RC -eq 0 ]]; then
   step "写入环境变量到 shell rc"
@@ -225,22 +284,28 @@ if [[ $SKIP_RC -eq 0 ]]; then
       ;;
   esac
   touch "$rc"
-  marker="# >>> ai-installer / claude / livetoken >>>"
-  end="# <<< ai-installer / claude / livetoken <<<"
-  if grep -qF "$marker" "$rc"; then
-    awk -v m="$marker" -v e="$end" '$0==m{skip=1;next} skip && $0==e{skip=0;next} !skip{print}' "$rc" > "$rc.tmp" && mv "$rc.tmp" "$rc"
-  fi
+  marker="# >>> ai-installer / claude >>>"
+  end="# <<< ai-installer / claude <<<"
+  # Strip our current block AND the older livetoken-suffixed one, so an upgrade
+  # from a previous install replaces rather than duplicates the exports.
+  strip_block() {
+    local m="$1" e="$2"
+    if grep -qF "$m" "$rc"; then
+      awk -v m="$m" -v e="$e" '$0==m{skip=1;next} skip && $0==e{skip=0;next} !skip{print}' "$rc" > "$rc.tmp" && mv "$rc.tmp" "$rc"
+    fi
+  }
+  strip_block "$marker" "$end"
+  strip_block "# >>> ai-installer / claude / livetoken >>>" "# <<< ai-installer / claude / livetoken <<<"
   {
     printf "\n%s\n" "$marker"
-    printf "export ANTHROPIC_API_KEY=%q\n" "$API_KEY"
+    printf "export ANTHROPIC_AUTH_TOKEN=%q\n" "$API_KEY"
     printf "export ANTHROPIC_BASE_URL=%q\n" "$BASE_URL"
-    printf "export LIVETOKEN_API_KEY=%q\n" "$API_KEY"
     printf "%s\n" "$end"
   } >> "$rc"
-  ok "已在 $rc 写入 ANTHROPIC_API_KEY=$mask + ANTHROPIC_BASE_URL=$BASE_URL"
+  ok "已在 $rc 写入 ANTHROPIC_AUTH_TOKEN=$mask + ANTHROPIC_BASE_URL=$BASE_URL"
   warn "只对新打开的终端生效，或 source $rc"
 else
-  warn "已跳过 shell rc 写入 (--skip-rc)。运行 claude 前请手动 export ANTHROPIC_API_KEY=…"
+  warn "已跳过 shell rc 写入 (--skip-rc)。运行 claude 前请手动 export ANTHROPIC_AUTH_TOKEN=…"
 fi
 
 # ---------------------------------------------------------------------------

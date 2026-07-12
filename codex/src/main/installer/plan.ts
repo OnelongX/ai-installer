@@ -26,7 +26,8 @@ export function buildInstallPlan(input: InstallPlanInput): InstallPlan {
     tasks.push('persist-openai-api-key')
   }
 
-  tasks.push('write-config', 'verify-codex-runtime')
+  // Validate the gateway is reachable before writing config.toml.
+  tasks.push('verify-gateway', 'write-config', 'verify-codex-runtime')
 
   return {
     summary: '在这台电脑上安装 Codex',

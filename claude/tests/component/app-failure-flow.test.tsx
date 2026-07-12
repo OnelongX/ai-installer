@@ -14,6 +14,7 @@ describe('app failure flow', () => {
         installerClient={{
           dismissRecoveryState: async () => {},
           exportDiagnostics: async () => '',
+          getExistingApiKey: async () => ({ exists: false }),
           generatePlan: async () => ({
             summary: '在这台电脑上安装 Claude',
             tasks: ['install-claude']

@@ -168,6 +168,21 @@ export function createInstallerService(deps: InstallerServiceDeps) {
       return buildInstallPlan({ ...input, oauthCredentialsExist: oauth.exists })
     },
 
+    async getExistingApiKey() {
+      // The token visible to this process is what a fresh `claude` would pick
+      // up. If it's set, offer to reuse it; otherwise the renderer hides the
+      // "continue with existing key" card entirely.
+      const raw = (
+        process.env.ANTHROPIC_AUTH_TOKEN ??
+        process.env.ANTHROPIC_API_KEY ??
+        ''
+      ).trim()
+      if (!raw) {
+        return { exists: false as const }
+      }
+      return { exists: true as const, mask: maskKey(raw) }
+    },
+
     async startInstall(input: StartInstallRequest): Promise<InstallExecutionResult> {
       const logs: string[] = []
       const configPath = getSettingsJsonPath(deps.userProfile)

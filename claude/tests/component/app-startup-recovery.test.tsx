@@ -16,6 +16,7 @@ describe('app startup recovery', () => {
         installerClient={{
           dismissRecoveryState,
           exportDiagnostics: async () => '',
+          getExistingApiKey: async () => ({ exists: false }),
           generatePlan: async () => ({
             summary: '在这台电脑上安装 Claude',
             tasks: ['install-claude']

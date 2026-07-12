@@ -53,6 +53,7 @@ export default function App({ installerClient }: AppProps) {
   const [plan, setPlan] = useState<InstallPlan | null>(null)
   const [apiKey, setApiKey] = useState('')
   const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER)
+  const [existingKeyMask, setExistingKeyMask] = useState<string | undefined>(undefined)
   const [environmentItems, setEnvironmentItems] = useState<DetectionItem[]>([])
   const [executionState, setExecutionState] = useState({
     currentTask: '',
@@ -93,6 +94,12 @@ export default function App({ installerClient }: AppProps) {
     void client.getAppInfo().then((info) => {
       if (!cancelled) {
         setAppInfo(info)
+      }
+    })
+
+    void client.getExistingApiKey().then((result) => {
+      if (!cancelled) {
+        setExistingKeyMask(result.exists ? result.mask : undefined)
       }
     })
 
@@ -243,8 +250,8 @@ export default function App({ installerClient }: AppProps) {
       <>
         {versionBadge}
         <ApiKeyStep
-          existingKeyMask="sk-***1234"
-          canReuseExistingKey
+          existingKeyMask={existingKeyMask}
+          canReuseExistingKey={Boolean(existingKeyMask)}
           onOpenProviderSite={() => {
             void client.openProviderSite()
           }}

@@ -5,6 +5,7 @@ import {
   type AppInfoData,
   type DesktopAppStateData,
   type DetectionItemData,
+  type ExistingApiKeyResult,
   type GeneratePlanRequest,
   type InstallExecutionResult,
   type InstallLogEvent,
@@ -21,6 +22,7 @@ export interface InstallerClient {
   dismissRecoveryState(): Promise<void>
   exportDiagnostics(): Promise<string>
   generatePlan(input: GeneratePlanRequest): Promise<InstallPlanData>
+  getExistingApiKey(): Promise<ExistingApiKeyResult>
   getAppInfo(): Promise<AppInfoData>
   getDesktopAppState(): Promise<DesktopAppStateData>
   getRecoveryState(): Promise<RecoveryStateData>
@@ -66,6 +68,11 @@ const browserInstallerClient: InstallerClient = {
 
   async generatePlan(input) {
     return buildInstallPlan(input)
+  },
+
+  async getExistingApiKey() {
+    // No environment access in browser preview — treat as "no existing key".
+    return { exists: false as const }
   },
 
   async getAppInfo() {
@@ -301,6 +308,8 @@ function getIpcRendererApi(): RendererInstallerApi | null {
         ipcRenderer.invoke(ipcChannels.exportDiagnostics) as Promise<string>,
       generatePlan: (input) =>
         ipcRenderer.invoke(ipcChannels.generatePlan, input) as Promise<InstallPlanData>,
+      getExistingApiKey: () =>
+        ipcRenderer.invoke(ipcChannels.getExistingApiKey) as Promise<ExistingApiKeyResult>,
       getAppInfo: () => ipcRenderer.invoke(ipcChannels.getAppInfo) as Promise<AppInfoData>,
       getDesktopAppState: () =>
         ipcRenderer.invoke(ipcChannels.getDesktopAppState) as Promise<DesktopAppStateData>,

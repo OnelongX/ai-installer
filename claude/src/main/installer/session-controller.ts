@@ -224,6 +224,10 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
       return sharedService.generatePlan(input)
     },
 
+    getExistingApiKey() {
+      return sharedService.getExistingApiKey()
+    },
+
     async getRecoveryState(): Promise<RecoveryStateData> {
       await ensureHydrated()
 

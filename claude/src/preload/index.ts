@@ -13,6 +13,7 @@ const api: RendererInstallerApi = {
   openProviderSite: () => ipcRenderer.invoke(ipcChannels.openProviderSite),
   validateApiKey: (input) => ipcRenderer.invoke(ipcChannels.validateApiKey, input),
   generatePlan: (input) => ipcRenderer.invoke(ipcChannels.generatePlan, input),
+  getExistingApiKey: () => ipcRenderer.invoke(ipcChannels.getExistingApiKey),
   startInstall: (input) => ipcRenderer.invoke(ipcChannels.startInstall, input),
   subscribeLogs: (listener) => {
     const wrappedListener = (
