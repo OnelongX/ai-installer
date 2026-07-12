@@ -167,6 +167,17 @@ export function createInstallerService(deps: InstallerServiceDeps) {
       }
     },
 
+    async getExistingApiKey() {
+      // OPENAI_API_KEY visible to this process is the same value the codex
+      // CLI would pick up. If it's set, offer to reuse it; otherwise the
+      // renderer hides the "continue with existing key" card entirely.
+      const raw = process.env.OPENAI_API_KEY?.trim()
+      if (!raw) {
+        return { exists: false as const }
+      }
+      return { exists: true as const, mask: maskKey(raw) }
+    },
+
     async startInstall(input: StartInstallRequest): Promise<InstallExecutionResult> {
       const logs: string[] = []
       const configPath = getConfigTomlPath(deps.userProfile)

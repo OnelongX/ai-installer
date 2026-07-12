@@ -17,6 +17,8 @@ describe('app execution stream', () => {
     const client = {
       dismissRecoveryState: async () => {},
       exportDiagnostics: async () => '',
+      getExistingApiKey: async () => ({ exists: false as const }),
+      probeNetwork: async () => ({ internalReachable: false, resolvedBaseUrl: "https://ai-api.solaeon.com", network: "external" as const }),
       generatePlan: async () => ({
         summary: '在这台电脑上安装 Codex',
         tasks: ['install-codex', 'verify-codex-runtime']

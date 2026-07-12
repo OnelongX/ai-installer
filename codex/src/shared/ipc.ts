@@ -37,6 +37,10 @@ export interface NetworkProbeResult {
   network: 'internal' | 'external'
 }
 
+export type ExistingApiKeyResult =
+  | { exists: false }
+  | { exists: true; mask: string }
+
 export interface ValidationResult {
   message?: string
   ok: boolean
@@ -102,6 +106,7 @@ export const ipcChannels = {
   dismissRecoveryState: 'installer:dismiss-recovery-state',
   exportDiagnostics: 'installer:export-diagnostics',
   generatePlan: 'installer:generate-plan',
+  getExistingApiKey: 'installer:get-existing-api-key',
   getRecoveryState: 'installer:get-recovery-state',
   loadEnvironment: 'installer:load-environment',
   openDesktopApp: 'installer:open-desktop-app',
@@ -127,6 +132,7 @@ export interface RendererInstallerApi {
   probeNetwork(): Promise<NetworkProbeResult>
   validateApiKey(input: string): Promise<ValidationResult>
   generatePlan(input: GeneratePlanRequest): Promise<InstallPlanData>
+  getExistingApiKey(): Promise<ExistingApiKeyResult>
   startInstall(input: StartInstallRequest): Promise<InstallExecutionResult>
   subscribeLogs(listener: (event: InstallLogEvent) => void): () => void
   retryTask(taskId: string): Promise<InstallExecutionResult>

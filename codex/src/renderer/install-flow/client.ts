@@ -8,6 +8,7 @@ import {
   type GeneratePlanRequest,
   type InstallExecutionResult,
   type InstallLogEvent,
+  type ExistingApiKeyResult,
   type InstallPlanData,
   type NetworkProbeResult,
   type RecoveryStateData,
@@ -31,6 +32,7 @@ export interface InstallerClient {
   openDesktopAppInstall(): Promise<boolean>
   openProviderSite(): Promise<boolean>
   probeNetwork(): Promise<NetworkProbeResult>
+  getExistingApiKey(): Promise<ExistingApiKeyResult>
   resumeInstall(): Promise<InstallExecutionResult>
   retryTask(taskId: string): Promise<InstallExecutionResult>
   subscribeLogs(listener: (event: InstallLogEvent) => void): () => void
@@ -155,6 +157,11 @@ const browserInstallerClient: InstallerClient = {
       resolvedBaseUrl: resolved.baseUrl,
       network: (resolved.network ?? 'external') as 'internal' | 'external'
     }
+  },
+
+  async getExistingApiKey() {
+    // No environment access in browser preview — treat as "no existing key".
+    return { exists: false as const }
   },
 
   async resumeInstall() {
@@ -329,6 +336,8 @@ function getIpcRendererApi(): RendererInstallerApi | null {
         ipcRenderer.invoke(ipcChannels.openProviderSite) as Promise<boolean>,
       probeNetwork: () =>
         ipcRenderer.invoke(ipcChannels.probeNetwork) as Promise<NetworkProbeResult>,
+      getExistingApiKey: () =>
+        ipcRenderer.invoke(ipcChannels.getExistingApiKey) as Promise<ExistingApiKeyResult>,
       resumeInstall: () =>
         ipcRenderer.invoke(ipcChannels.resumeInstall) as Promise<InstallExecutionResult>,
       retryTask: (taskId) =>

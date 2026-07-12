@@ -221,6 +221,10 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
       return sharedService.probeNetwork()
     },
 
+    getExistingApiKey() {
+      return sharedService.getExistingApiKey()
+    },
+
     generatePlan(input: GeneratePlanRequest) {
       return sharedService.generatePlan(input)
     },

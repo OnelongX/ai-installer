@@ -23,6 +23,12 @@ describe('app recovery flow', () => {
           dismissRecoveryState: async () => {},
           exportDiagnostics: async () =>
             ['# Codex 安装器诊断报告', '', '日志：', '- network timed out'].join('\n'),
+          getExistingApiKey: async () => ({ exists: false as const }),
+          probeNetwork: async () => ({
+            internalReachable: false,
+            resolvedBaseUrl: 'https://ai-api.solaeon.com',
+            network: 'external' as const
+          }),
           generatePlan: async () => ({
             summary: '在这台电脑上安装 Codex',
             tasks: ['install-codex']
