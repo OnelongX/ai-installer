@@ -28,13 +28,20 @@ export function buildInstallPlan(input: InstallPlanInput): InstallPlan {
   }
 
   // Existing Anthropic OAuth credentials (from a previous `claude login`)
-  // override ANTHROPIC_API_KEY + ANTHROPIC_BASE_URL at runtime, so we must
+  // override ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL at runtime, so we must
   // clear them before write-config or the gateway override silently fails.
   if (input.oauthCredentialsExist) {
     tasks.push('clear-anthropic-oauth')
   }
 
-  tasks.push('write-config', 'verify-claude-runtime')
+  // Validate the gateway serves our models before writing anything, then
+  // write the CLI settings.json and the Claude Desktop registry managed config.
+  tasks.push(
+    'verify-gateway',
+    'write-config',
+    'write-desktop-registry',
+    'verify-claude-runtime'
+  )
 
   return {
     summary: '在这台电脑上安装 Claude',

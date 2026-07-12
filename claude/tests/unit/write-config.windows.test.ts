@@ -8,26 +8,38 @@ import {
 } from '../../src/main/installer/tasks/write-config.windows'
 
 describe('windows settings.json generation', () => {
-  it('writes the LiveToken provider template with claude-sonnet-4-6 defaults', () => {
-    const json = buildSettingsJson({ mode: 'official' })
+  it('defaults to the SolaEon gateway with Opus 4.8 + 7-model whitelist', () => {
+    const json = buildSettingsJson()
     const parsed = JSON.parse(json)
 
-    expect(parsed.model).toBe('claude-sonnet-4-6')
-    expect(parsed.effortLevel).toBe('high')
-    expect(parsed.env.ANTHROPIC_BASE_URL).toBe('https://livetoken.top')
-    expect(parsed.env.ANTHROPIC_MODEL).toBe('claude-sonnet-4-6')
-    expect(parsed.env.ANTHROPIC_SMALL_FAST_MODEL).toBe('claude-haiku-4-5')
+    expect(parsed.model).toBe('claude-opus-4-8')
+    expect(parsed.env.ANTHROPIC_BASE_URL).toBe('https://ai-api.solaeon.com')
+    expect(parsed.env.ANTHROPIC_DEFAULT_OPUS_MODEL).toBe('claude-opus-4-8')
+    expect(parsed.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe('claude-sonnet-5')
+    expect(parsed.env.ANTHROPIC_DEFAULT_HAIKU_MODEL).toBe('claude-haiku-4-5')
+    expect(parsed.env.API_TIMEOUT_MS).toBe('300000')
     // Force-off the per-request attribution header so third-party Anthropic
     // gateways can keep prefix caches hot — see write-config.windows.ts.
     expect(parsed.env.CLAUDE_CODE_ATTRIBUTION_HEADER).toBe('0')
-    expect(parsed.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC).toBe('1')
+    expect(parsed.availableModels).toHaveLength(7)
+    expect(parsed.availableModels).toContain('claude-opus-4-8')
     expect(parsed.permissions).toEqual({ defaultMode: 'acceptEdits' })
     expect(json.endsWith('\n')).toBe(true)
   })
 
-  it('respects a custom baseUrl when provided', () => {
-    const json = buildSettingsJson({ mode: 'custom', baseUrl: 'https://example.test' })
-    expect(JSON.parse(json).env.ANTHROPIC_BASE_URL).toBe('https://example.test')
+  it('bootstrap default carries no auth token', () => {
+    const parsed = JSON.parse(buildSettingsJson())
+    expect(parsed.env.ANTHROPIC_AUTH_TOKEN).toBeUndefined()
+  })
+
+  it('writes the key as ANTHROPIC_AUTH_TOKEN when provided', () => {
+    const parsed = JSON.parse(buildSettingsJson({ apiKey: 'sk-test-123' }))
+    expect(parsed.env.ANTHROPIC_AUTH_TOKEN).toBe('sk-test-123')
+  })
+
+  it('uses the LiveToken base URL when that provider is chosen', () => {
+    const parsed = JSON.parse(buildSettingsJson({ providerId: 'livetoken' }))
+    expect(parsed.env.ANTHROPIC_BASE_URL).toBe('https://livetoken.top')
   })
 
   it('creates the default settings.json when it is missing', async () => {
@@ -49,7 +61,7 @@ describe('windows settings.json generation', () => {
     expect(mkdir).toHaveBeenCalledWith(path.join(userProfile, '.claude'))
     expect(writeFile).toHaveBeenCalledWith(
       path.join(userProfile, '.claude', 'settings.json'),
-      buildSettingsJson({ mode: 'official' })
+      buildSettingsJson()
     )
   })
 

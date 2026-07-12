@@ -1,8 +1,20 @@
 import path from 'node:path'
 
+import {
+  DEFAULT_MODEL,
+  TIER_DEFAULTS,
+  baseModelIds,
+  resolveProvider,
+  type ProviderId,
+  type ResolvedProvider
+} from '../../../shared/provider-config'
+
 interface BuildSettingsJsonOptions {
-  baseUrl?: string
-  mode: 'custom' | 'official'
+  /** fully-resolved provider (base URL). Wins over providerId. */
+  provider?: ResolvedProvider
+  providerId?: ProviderId
+  /** the LiveToken / SolaEon API key. Written as ANTHROPIC_AUTH_TOKEN (Bearer). */
+  apiKey?: string
 }
 
 interface EnsureSettingsJsonDeps {
@@ -12,51 +24,40 @@ interface EnsureSettingsJsonDeps {
   writeFile(path: string, value: string): Promise<void>
 }
 
-// 2026-05 model lineup as shown in the Claude Code /model picker:
-//   Opus 4.7   = claude-opus-4-7
-//   Opus 4.7 1M = claude-opus-4-7-1m
-//   Sonnet 4.6 = claude-sonnet-4-6      ← default (balanced cost/quality)
-//   Haiku 4.5  = claude-haiku-4-5       ← fast/cheap small model
-//   Opus 4.6   = claude-opus-4-6        (legacy)
-const DEFAULT_MODEL = 'claude-sonnet-4-6'
-const SMALL_FAST_MODEL = 'claude-haiku-4-5'
-const DEFAULT_EFFORT = 'high'
-const DEFAULT_BASE_URL = 'https://livetoken.top'
+// Claude Code reads settings.json from %USERPROFILE%\.claude\settings.json.
+// We follow the SolaEon reference layout:
+//   env.ANTHROPIC_BASE_URL       → the gateway
+//   env.ANTHROPIC_AUTH_TOKEN     → the key, sent as `Authorization: Bearer`
+//                                  (the gateway-recommended auth per Claude docs)
+//   env.ANTHROPIC_DEFAULT_*_MODEL→ per-tier default model
+//   env.API_TIMEOUT_MS           → 5-minute request timeout for slow gateways
+//   model                        → startup default (Opus 4.8)
+//   availableModels              → the 7-model whitelist (base ids, no 1M suffix)
+//
+// We additionally keep CLAUDE_CODE_ATTRIBUTION_HEADER=0: Claude Code 2.1.36+
+// prepends a per-request `cch` fingerprint to the system prompt that tanks a
+// third-party gateway's prefix-cache hit rate. Anthropic's own backend strips
+// it; gateways don't. Turning it off keeps caches hot.
+// Docs: https://code.claude.com/docs/en/llm-gateway
+function buildSettings(baseUrl: string, apiKey?: string) {
+  const env: Record<string, string> = {
+    ANTHROPIC_BASE_URL: baseUrl,
+    ANTHROPIC_DEFAULT_OPUS_MODEL: TIER_DEFAULTS.opus,
+    ANTHROPIC_DEFAULT_SONNET_MODEL: TIER_DEFAULTS.sonnet,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: TIER_DEFAULTS.haiku,
+    API_TIMEOUT_MS: '300000',
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+    CLAUDE_CODE_ATTRIBUTION_HEADER: '0'
+  }
 
-// Claude Code reads settings.json from %USERPROFILE%\.claude\settings.json on
-// Windows (and ~/.claude/settings.json elsewhere). The schema accepts:
-//   - env: a map of env vars injected into every claude session (we use this
-//     to redirect the SDK at the LiveToken Anthropic-compatible endpoint and
-//     to lock in the default model).
-//   - model: default model name the CLI selects on startup.
-//   - effortLevel: low | medium | high | xhigh | max.
-//   - permissions / mcpServers / hooks: untouched here; users can layer them
-//     on top without conflict.
-function buildDefaultSettings(baseUrl: string) {
+  if (apiKey) {
+    env.ANTHROPIC_AUTH_TOKEN = apiKey
+  }
+
   return {
-    env: {
-      ANTHROPIC_BASE_URL: baseUrl,
-      ANTHROPIC_MODEL: DEFAULT_MODEL,
-      // Note: ANTHROPIC_SMALL_FAST_MODEL is marked [DEPRECATED] in the
-      // official env-vars doc as of 2026-05, but Claude Code 2.1.x still
-      // honors it. We keep it pinned to Haiku so background tasks don't
-      // silently use Opus and burn tokens.
-      ANTHROPIC_SMALL_FAST_MODEL: SMALL_FAST_MODEL,
-      // Disable updater/telemetry/feedback/error reporting in one flag.
-      // Docs: https://code.claude.com/docs/en/env-vars
-      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
-      // Claude Code 2.1.36+ injects an `x-anthropic-billing-header` system
-      // block whose `cch` field rotates per request. Anthropic's own backend
-      // strips it before computing the prefix-cache key, but every third
-      // party Anthropic-compatible gateway (LiveToken, Bedrock, vLLM, etc.)
-      // treats it as part of the system prompt — so prefix-cache hit rate
-      // crashes to zero and token spend balloons. Disabling the header here
-      // restores cache hits for users routed through LiveToken.
-      // Docs: https://code.claude.com/docs/en/llm-gateway
-      CLAUDE_CODE_ATTRIBUTION_HEADER: '0'
-    },
+    env,
     model: DEFAULT_MODEL,
-    effortLevel: DEFAULT_EFFORT,
+    availableModels: baseModelIds(),
     permissions: {
       defaultMode: 'acceptEdits'
     },
@@ -65,9 +66,9 @@ function buildDefaultSettings(baseUrl: string) {
   }
 }
 
-export function buildSettingsJson(options: BuildSettingsJsonOptions) {
-  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL
-  return `${JSON.stringify(buildDefaultSettings(baseUrl), null, 2)}\n`
+export function buildSettingsJson(options: BuildSettingsJsonOptions = {}) {
+  const provider = options.provider ?? resolveProvider(options.providerId)
+  return `${JSON.stringify(buildSettings(provider.baseUrl, options.apiKey), null, 2)}\n`
 }
 
 export function getSettingsJsonPath(userProfile: string) {
@@ -85,7 +86,9 @@ export async function ensureSettingsJson(deps: EnsureSettingsJsonDeps) {
   }
 
   await deps.mkdir(path.dirname(settingsPath))
-  await deps.writeFile(settingsPath, buildSettingsJson({ mode: 'official' }))
+  // Bootstrap default has no key yet (SolaEon gateway); the real install run
+  // rewrites this with the resolved provider + ANTHROPIC_AUTH_TOKEN.
+  await deps.writeFile(settingsPath, buildSettingsJson())
 
   return {
     created: true,

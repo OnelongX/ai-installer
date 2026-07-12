@@ -4,13 +4,13 @@ import { buildPersistApiKeyCommand } from '../../src/main/installer/tasks/persis
 describe('windows api key persistence', () => {
   it('writes the key to the user environment variables', () => {
     expect(buildPersistApiKeyCommand('sk-test-key')).toBe(
-      "[Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', 'sk-test-key', 'User')"
+      "[Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', 'sk-test-key', 'User')"
     )
   })
 
   it('escapes single quotes inside the key value', () => {
     expect(buildPersistApiKeyCommand("sk-it's-a-key")).toBe(
-      "[Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', 'sk-it''s-a-key', 'User')"
+      "[Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', 'sk-it''s-a-key', 'User')"
     )
   })
 })

@@ -74,7 +74,7 @@ describe('app startup recovery', () => {
     expect(screen.getByText('上次失败任务：')).toBeInTheDocument()
     expect(screen.getByText('安装 Claude Code CLI')).toBeInTheDocument()
     expect(screen.getByText('已完成任务：')).toBeInTheDocument()
-    expect(screen.getByText('写入 Claude 配置')).toBeInTheDocument()
+    expect(screen.getByText('写入 Claude Code 配置')).toBeInTheDocument()
     expect(screen.getByText('待执行任务：')).toBeInTheDocument()
     expect(screen.getByText('安装 Claude Code CLI, 验证 Claude 运行环境')).toBeInTheDocument()
     expect(screen.getByText('诊断预览')).toBeInTheDocument()

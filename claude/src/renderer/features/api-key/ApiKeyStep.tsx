@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 
+import { DEFAULT_PROVIDER, type ProviderId } from '../../../shared/provider-config'
 import {
   canContinueFromApiKeyState,
   toInstallerApiKeyMode,
@@ -7,12 +8,18 @@ import {
   type ApiKeyViewState
 } from './api-key-state'
 
+const providerChoices: Array<{ id: ProviderId; title: string; detail: string }> = [
+  { id: 'solaeon', title: 'SolaEon', detail: 'https://ai-api.solaeon.com · 默认' },
+  { id: 'livetoken', title: 'LiveToken', detail: 'https://livetoken.top' }
+]
+
 interface ApiKeyStepProps {
   existingKeyMask?: string
   canReuseExistingKey?: boolean
   onContinue?: (state: {
     apiKeyMode: 'existing' | 'user-env'
     keyValue: string
+    provider: ProviderId
   }) => void
   onOpenProviderSite?: () => void
 }
@@ -59,6 +66,7 @@ export function ApiKeyStep({
   const [mode, setMode] = useState<ApiKeySelectionMode>(null)
   const [showValue, setShowValue] = useState(false)
   const [value, setValue] = useState('')
+  const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER)
 
   const state: ApiKeyViewState = {
     existingKeyMask,
@@ -141,6 +149,41 @@ export function ApiKeyStep({
               为本次安装流程使用另一个 Key，并在继续前完成校验。
             </p>
           </button>
+
+          <div style={{ display: 'grid', gap: '10px' }}>
+            <span style={{ color: 'rgba(226, 232, 240, 0.9)' }}>模型服务网关</span>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '10px'
+              }}
+            >
+              {providerChoices.map((choice) => (
+                <button
+                  key={choice.id}
+                  type="button"
+                  onClick={() => setProvider(choice.id)}
+                  style={optionStyle(provider === choice.id)}
+                >
+                  <strong style={{ fontSize: '0.95rem' }}>{choice.title}</strong>
+                  <p
+                    style={{
+                      margin: '6px 0 0',
+                      color: 'rgba(226, 232, 240, 0.7)',
+                      fontSize: '0.8rem',
+                      wordBreak: 'break-all'
+                    }}
+                  >
+                    {choice.detail}
+                  </p>
+                </button>
+              ))}
+            </div>
+            <p style={{ margin: 0, color: 'rgba(148, 163, 184, 0.85)', fontSize: '0.8rem' }}>
+              会同时配置 Claude Code CLI 和 Claude Desktop（7 个模型 + 3 个 1M 变体）。
+            </p>
+          </div>
 
           <label
             style={{
@@ -270,7 +313,8 @@ export function ApiKeyStep({
 
               onContinue?.({
                 apiKeyMode: toInstallerApiKeyMode(state),
-                keyValue: value
+                keyValue: value,
+                provider
               })
             }}
             style={{

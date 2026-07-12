@@ -9,6 +9,7 @@ import type {
   ValidationResult
 } from '../../shared/ipc'
 import { isApiKeyValueValid } from '../../renderer/features/api-key/api-key-state'
+import { resolveProvider } from '../../shared/provider-config'
 import { buildInstallPlan } from './plan'
 import {
   clearOAuthCredentials,
@@ -16,12 +17,14 @@ import {
   getOAuthCredentialsPath
 } from './tasks/clear-anthropic-oauth'
 import { createConfigDetectionItem } from './tasks/detect-config'
+import { checkGatewayModels } from './tasks/detect-gateway'
 import { detectClaude } from './tasks/detect-claude'
 import { detectNode } from './tasks/detect-node'
 import { detectSystem } from './tasks/detect-system'
 import { getInstallClaudeWindowsCommand } from './tasks/install-claude.windows'
 import { getInstallNodeWindowsCommand } from './tasks/install-node.windows'
 import { buildPersistApiKeyCommand } from './tasks/persist-api-key.windows'
+import { buildWriteRegistryCommand } from './tasks/write-registry.windows'
 import {
   buildSettingsJson,
   ensureSettingsJson,
@@ -168,6 +171,7 @@ export function createInstallerService(deps: InstallerServiceDeps) {
     async startInstall(input: StartInstallRequest): Promise<InstallExecutionResult> {
       const logs: string[] = []
       const configPath = getSettingsJsonPath(deps.userProfile)
+      const provider = resolveProvider(input.provider)
       let claudeVersion = 'unknown'
       let activeTask = 'bootstrap'
 
@@ -267,7 +271,7 @@ export function createInstallerService(deps: InstallerServiceDeps) {
               await emitLog({
                 level: 'info',
                 message:
-                  '[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "***", "User")',
+                  '[Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "***", "User")',
                 taskId: task,
                 type: 'task-output'
               })
@@ -311,15 +315,57 @@ export function createInstallerService(deps: InstallerServiceDeps) {
               }
               break
             }
+            case 'verify-gateway': {
+              await emitLog({
+                level: 'info',
+                message: `GET ${provider.baseUrl}/v1/models`,
+                taskId: task,
+                type: 'task-output'
+              })
+              const check = await checkGatewayModels(provider, input.apiKey)
+              if (!check.ok) {
+                const reason = check.error
+                  ? check.error
+                  : `网关缺少模型：${check.missing.join(', ')}`
+                throw new Error(`网关验证失败（${provider.name}）：${reason}`)
+              }
+              await emitLog({
+                level: 'info',
+                message: `网关 ${provider.name} 就绪，已返回全部 ${check.discovered.length} 个模型`,
+                taskId: task,
+                type: 'task-output'
+              })
+              break
+            }
             case 'write-config': {
               await emitLog({
                 level: 'info',
-                message: `写入 ${configPath}`,
+                message: `写入 ${configPath}（provider=${provider.name}, base_url=${provider.baseUrl}）`,
                 taskId: task,
                 type: 'task-output'
               })
               await deps.mkdir(path.dirname(configPath))
-              await deps.writeFile(configPath, buildSettingsJson({ mode: 'official' }))
+              await deps.writeFile(
+                configPath,
+                buildSettingsJson({ provider, apiKey: input.apiKey })
+              )
+              break
+            }
+            case 'write-desktop-registry': {
+              await emitLog({
+                level: 'info',
+                message: `写入 HKCU\\Software\\Policies\\Claude（Desktop 托管配置，7 模型）`,
+                taskId: task,
+                type: 'task-output'
+              })
+              const command = buildWriteRegistryCommand(provider, input.apiKey)
+              const result = await deps.exec('powershell', ['-NoProfile', '-Command', command], {
+                timeoutMs: VERIFY_TIMEOUT_MS
+              })
+              if (result.exitCode !== 0) {
+                throw new Error(result.stderr || 'Claude Desktop 注册表配置写入失败')
+              }
+              await emitCommandResult(task, result)
               break
             }
             case 'verify-claude-runtime': {

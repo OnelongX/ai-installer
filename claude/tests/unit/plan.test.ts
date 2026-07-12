@@ -37,4 +37,17 @@ describe('install planning', () => {
 
     expect(plan.tasks).not.toContain('clear-anthropic-oauth')
   })
+
+  it('orders gateway verify → write-config → desktop registry → runtime verify', () => {
+    const plan = buildInstallPlan({
+      apiKeyMode: 'user-env',
+      claudeInstalled: true,
+      nodeInstalled: true
+    })
+
+    const order = ['verify-gateway', 'write-config', 'write-desktop-registry', 'verify-claude-runtime']
+    const indices = order.map((t) => plan.tasks.indexOf(t))
+    expect(indices.every((i) => i >= 0)).toBe(true)
+    expect(indices).toEqual([...indices].sort((a, b) => a - b))
+  })
 })

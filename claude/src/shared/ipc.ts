@@ -1,3 +1,5 @@
+import type { ProviderId } from './provider-config'
+
 export interface DetectionItemData {
   command?: string
   detail: string
@@ -21,6 +23,8 @@ export interface GeneratePlanRequest {
 export interface StartInstallRequest {
   apiKey: string
   plan: InstallPlanData
+  /** which gateway to configure (default: solaeon) */
+  provider?: ProviderId
 }
 
 export interface ValidationResult {

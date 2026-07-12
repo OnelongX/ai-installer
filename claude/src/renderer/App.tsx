@@ -8,6 +8,8 @@ import type {
   InstallExecutionResult,
   InstallLogEvent
 } from '../shared/ipc'
+import type { ProviderId } from '../shared/provider-config'
+import { DEFAULT_PROVIDER } from '../shared/provider-config'
 import { getInstallerTaskLabel } from '../shared/task-labels'
 import { ApiKeyStep } from './features/api-key/ApiKeyStep'
 import { CompleteView } from './features/complete/CompleteView'
@@ -50,6 +52,7 @@ export default function App({ installerClient }: AppProps) {
   const [appInfo, setAppInfo] = useState<AppInfoData>(fallbackAppInfo)
   const [plan, setPlan] = useState<InstallPlan | null>(null)
   const [apiKey, setApiKey] = useState('')
+  const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER)
   const [environmentItems, setEnvironmentItems] = useState<DetectionItem[]>([])
   const [executionState, setExecutionState] = useState({
     currentTask: '',
@@ -245,7 +248,8 @@ export default function App({ installerClient }: AppProps) {
           onOpenProviderSite={() => {
             void client.openProviderSite()
           }}
-          onContinue={({ apiKeyMode, keyValue }) => {
+          onContinue={({ apiKeyMode, keyValue, provider: chosenProvider }) => {
+            setProvider(chosenProvider)
             const continueWithEnvironment = async () => {
               const environment = (await client.loadEnvironment()) as DetectionItemData[]
               const hasNode = environment.some(
@@ -426,7 +430,8 @@ export default function App({ installerClient }: AppProps) {
 
           const result = (await client.startInstall({
             apiKey,
-            plan: activePlan
+            plan: activePlan,
+            provider
           })) as InstallExecutionResult
 
           handleExecutionResult(result)

@@ -16,6 +16,6 @@ describe('plan view', () => {
 
     expect(screen.getByText('安装计划')).toBeInTheDocument()
     expect(screen.getByText('安装 Claude Code CLI')).toBeInTheDocument()
-    expect(screen.getByText('写入 Claude 配置')).toBeInTheDocument()
+    expect(screen.getByText('写入 Claude Code 配置')).toBeInTheDocument()
   })
 })
