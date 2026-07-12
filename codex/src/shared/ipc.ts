@@ -1,3 +1,5 @@
+import type { NetworkMode, ProviderId } from './provider-config'
+
 export interface DetectionItemData {
   command?: string
   detail: string
@@ -21,6 +23,18 @@ export interface GeneratePlanRequest {
 export interface StartInstallRequest {
   apiKey: string
   plan: InstallPlanData
+  /** which model provider to write into config.toml (default: livetoken) */
+  provider?: ProviderId
+  /** for solaeon: auto probes the LAN, internal/external force one address */
+  networkMode?: NetworkMode
+}
+
+export interface NetworkProbeResult {
+  /** true when the Solaeon LAN box (192.168.1.101:48760) answered a TCP connect */
+  internalReachable: boolean
+  /** the base_url that `auto` mode would pick right now */
+  resolvedBaseUrl: string
+  network: 'internal' | 'external'
 }
 
 export interface ValidationResult {
@@ -93,6 +107,7 @@ export const ipcChannels = {
   openDesktopApp: 'installer:open-desktop-app',
   openDesktopAppInstall: 'installer:open-desktop-app-install',
   openProviderSite: 'installer:open-provider-site',
+  probeNetwork: 'installer:probe-network',
   resumeInstall: 'installer:resume',
   retryTask: 'installer:retry-task',
   startInstall: 'installer:start',
@@ -109,6 +124,7 @@ export interface RendererInstallerApi {
   openDesktopApp(): Promise<boolean>
   openDesktopAppInstall(): Promise<boolean>
   openProviderSite(): Promise<boolean>
+  probeNetwork(): Promise<NetworkProbeResult>
   validateApiKey(input: string): Promise<ValidationResult>
   generatePlan(input: GeneratePlanRequest): Promise<InstallPlanData>
   startInstall(input: StartInstallRequest): Promise<InstallExecutionResult>

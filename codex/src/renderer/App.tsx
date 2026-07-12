@@ -8,6 +8,7 @@ import type {
   InstallExecutionResult,
   InstallLogEvent
 } from '../shared/ipc'
+import type { NetworkMode, ProviderId } from '../shared/provider-config'
 import { getInstallerTaskLabel } from '../shared/task-labels'
 import { ApiKeyStep } from './features/api-key/ApiKeyStep'
 import { CompleteView } from './features/complete/CompleteView'
@@ -50,6 +51,8 @@ export default function App({ installerClient }: AppProps) {
   const [appInfo, setAppInfo] = useState<AppInfoData>(fallbackAppInfo)
   const [plan, setPlan] = useState<InstallPlan | null>(null)
   const [apiKey, setApiKey] = useState('')
+  const [provider, setProvider] = useState<ProviderId>('livetoken')
+  const [networkMode, setNetworkMode] = useState<NetworkMode>('auto')
   const [environmentItems, setEnvironmentItems] = useState<DetectionItem[]>([])
   const [executionState, setExecutionState] = useState({
     currentTask: '',
@@ -245,7 +248,10 @@ export default function App({ installerClient }: AppProps) {
           onOpenProviderSite={() => {
             void client.openProviderSite()
           }}
-          onContinue={({ apiKeyMode, keyValue }) => {
+          onProbeNetwork={() => client.probeNetwork()}
+          onContinue={({ apiKeyMode, keyValue, provider: chosenProvider, networkMode: chosenMode }) => {
+            setProvider(chosenProvider)
+            setNetworkMode(chosenMode)
             const continueWithEnvironment = async () => {
               const environment = (await client.loadEnvironment()) as DetectionItemData[]
               const hasNode = environment.some(
@@ -426,7 +432,9 @@ export default function App({ installerClient }: AppProps) {
 
           const result = (await client.startInstall({
             apiKey,
-            plan: activePlan
+            plan: activePlan,
+            provider,
+            networkMode
           })) as InstallExecutionResult
 
           handleExecutionResult(result)

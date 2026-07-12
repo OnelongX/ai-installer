@@ -1,5 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 
+import type { NetworkProbeResult } from '../../../shared/ipc'
+import type { NetworkMode, ProviderId } from '../../../shared/provider-config'
 import {
   canContinueFromApiKeyState,
   toInstallerApiKeyMode,
@@ -7,14 +9,51 @@ import {
   type ApiKeyViewState
 } from './api-key-state'
 
+type ProviderChoice = 'livetoken' | 'solaeon-auto' | 'solaeon-internal' | 'solaeon-external'
+
+function toProviderAndMode(choice: ProviderChoice): {
+  provider: ProviderId
+  networkMode: NetworkMode
+} {
+  switch (choice) {
+    case 'livetoken':
+      return { provider: 'livetoken', networkMode: 'auto' }
+    case 'solaeon-internal':
+      return { provider: 'solaeon', networkMode: 'internal' }
+    case 'solaeon-external':
+      return { provider: 'solaeon', networkMode: 'external' }
+    case 'solaeon-auto':
+    default:
+      return { provider: 'solaeon', networkMode: 'auto' }
+  }
+}
+
+const providerChoices: Array<{
+  id: ProviderChoice
+  title: string
+  detail: string
+}> = [
+  { id: 'livetoken', title: 'LiveToken', detail: '公共网关 · https://livetoken.top/v1' },
+  {
+    id: 'solaeon-auto',
+    title: 'Solaeon · 自动',
+    detail: '先探测内网，通则内网，否则外网'
+  },
+  { id: 'solaeon-internal', title: 'Solaeon · 内网', detail: 'http://192.168.1.101:48760' },
+  { id: 'solaeon-external', title: 'Solaeon · 外网', detail: 'https://ai-api.solaeon.com' }
+]
+
 interface ApiKeyStepProps {
   existingKeyMask?: string
   canReuseExistingKey?: boolean
   onContinue?: (state: {
     apiKeyMode: 'existing' | 'user-env'
     keyValue: string
+    provider: ProviderId
+    networkMode: NetworkMode
   }) => void
   onOpenProviderSite?: () => void
+  onProbeNetwork?: () => Promise<NetworkProbeResult>
 }
 
 const panelStyle = {
@@ -54,11 +93,26 @@ export function ApiKeyStep({
   existingKeyMask,
   canReuseExistingKey = false,
   onContinue,
-  onOpenProviderSite
+  onOpenProviderSite,
+  onProbeNetwork
 }: ApiKeyStepProps) {
   const [mode, setMode] = useState<ApiKeySelectionMode>(null)
   const [showValue, setShowValue] = useState(false)
   const [value, setValue] = useState('')
+  const [providerChoice, setProviderChoice] = useState<ProviderChoice>('livetoken')
+  const [probe, setProbe] = useState<NetworkProbeResult | null>(null)
+  const [probing, setProbing] = useState(false)
+
+  const runProbe = () => {
+    if (!onProbeNetwork) {
+      return
+    }
+    setProbing(true)
+    void onProbeNetwork()
+      .then((result) => setProbe(result))
+      .catch(() => setProbe(null))
+      .finally(() => setProbing(false))
+  }
 
   const state: ApiKeyViewState = {
     existingKeyMask,
@@ -141,6 +195,60 @@ export function ApiKeyStep({
               为本次安装流程使用另一个 Key，并在继续前完成校验。
             </p>
           </button>
+
+          <div style={{ display: 'grid', gap: '10px' }}>
+            <span style={{ color: 'rgba(226, 232, 240, 0.9)' }}>模型服务地址</span>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '10px'
+              }}
+            >
+              {providerChoices.map((choice) => (
+                <button
+                  key={choice.id}
+                  type="button"
+                  onClick={() => {
+                    setProviderChoice(choice.id)
+                    if (choice.id === 'solaeon-auto') {
+                      runProbe()
+                    }
+                  }}
+                  style={optionStyle(providerChoice === choice.id)}
+                >
+                  <strong style={{ fontSize: '0.95rem' }}>{choice.title}</strong>
+                  <p
+                    style={{
+                      margin: '6px 0 0',
+                      color: 'rgba(226, 232, 240, 0.7)',
+                      fontSize: '0.8rem',
+                      wordBreak: 'break-all'
+                    }}
+                  >
+                    {choice.detail}
+                  </p>
+                </button>
+              ))}
+            </div>
+            {providerChoice === 'solaeon-auto' ? (
+              <p
+                style={{
+                  margin: 0,
+                  color: '#7dd3fc',
+                  fontSize: '0.82rem'
+                }}
+              >
+                {probing
+                  ? '正在探测内网 192.168.1.101:48760 …'
+                  : probe
+                    ? probe.internalReachable
+                      ? `内网可达，将使用 ${probe.resolvedBaseUrl}`
+                      : `内网不可达，将回落到 ${probe.resolvedBaseUrl}`
+                    : '安装时会自动探测内网是否可达；也可点上面「内网/外网」手动指定。'}
+              </p>
+            ) : null}
+          </div>
 
           <label
             style={{
@@ -268,9 +376,12 @@ export function ApiKeyStep({
                 return
               }
 
+              const { provider, networkMode } = toProviderAndMode(providerChoice)
               onContinue?.({
                 apiKeyMode: toInstallerApiKeyMode(state),
-                keyValue: value
+                keyValue: value,
+                provider,
+                networkMode
               })
             }}
             style={{

@@ -176,6 +176,7 @@ function registerInstallerIpc() {
   ipcMain.handle(ipcChannels.dismissRecoveryState, () => controller.dismissRecoveryState())
   ipcMain.handle(ipcChannels.exportDiagnostics, async () => controller.exportDiagnostics())
   ipcMain.handle(ipcChannels.generatePlan, (_event, input) => controller.generatePlan(input))
+  ipcMain.handle(ipcChannels.probeNetwork, () => controller.probeNetwork())
   ipcMain.handle(ipcChannels.getAppInfo, async () => ({
     title: appShellTitle,
     version: app.getVersion()

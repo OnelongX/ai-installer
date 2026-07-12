@@ -38,9 +38,41 @@ const expectedConfigToml = [
   'env_key = "OPENAI_API_KEY"'
 ].join('\n')
 
+const solaeonInternalConfig = expectedConfigToml
+  .replace('name = "LiveToken"', 'name = "Solaeon"')
+  .replace('base_url = "https://livetoken.top/v1"', 'base_url = "http://192.168.1.101:48760"')
+
+const solaeonExternalConfig = expectedConfigToml
+  .replace('name = "LiveToken"', 'name = "Solaeon"')
+  .replace('base_url = "https://livetoken.top/v1"', 'base_url = "https://ai-api.solaeon.com"')
+
 describe('windows config generation', () => {
-  it('writes the complete cm provider template', () => {
-    expect(buildConfigToml({ mode: 'official' })).toBe(expectedConfigToml)
+  it('defaults to the LiveToken provider template', () => {
+    expect(buildConfigToml()).toBe(expectedConfigToml)
+  })
+
+  it('writes Solaeon internal base_url when forced internal', () => {
+    expect(buildConfigToml({ providerId: 'solaeon', networkMode: 'internal' })).toBe(
+      solaeonInternalConfig
+    )
+  })
+
+  it('writes Solaeon external base_url when forced external', () => {
+    expect(buildConfigToml({ providerId: 'solaeon', networkMode: 'external' })).toBe(
+      solaeonExternalConfig
+    )
+  })
+
+  it('auto mode with reachable LAN writes the internal base_url', () => {
+    expect(
+      buildConfigToml({ providerId: 'solaeon', networkMode: 'auto', internalReachable: true })
+    ).toBe(solaeonInternalConfig)
+  })
+
+  it('auto mode with unreachable LAN writes the external base_url', () => {
+    expect(
+      buildConfigToml({ providerId: 'solaeon', networkMode: 'auto', internalReachable: false })
+    ).toBe(solaeonExternalConfig)
   })
 
   it('creates the default config file when it is missing', async () => {

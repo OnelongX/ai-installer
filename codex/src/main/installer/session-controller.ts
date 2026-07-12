@@ -217,6 +217,10 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
       return sharedService.loadEnvironment()
     },
 
+    probeNetwork() {
+      return sharedService.probeNetwork()
+    },
+
     generatePlan(input: GeneratePlanRequest) {
       return sharedService.generatePlan(input)
     },

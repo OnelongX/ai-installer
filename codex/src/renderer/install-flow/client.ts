@@ -9,11 +9,13 @@ import {
   type InstallExecutionResult,
   type InstallLogEvent,
   type InstallPlanData,
+  type NetworkProbeResult,
   type RecoveryStateData,
   type RendererInstallerApi,
   type StartInstallRequest,
   type ValidationResult
 } from '../../shared/ipc'
+import { resolveProvider } from '../../shared/provider-config'
 import { isApiKeyValueValid } from '../features/api-key/api-key-state'
 import { runPreviewInstall } from './preview-execution'
 
@@ -28,6 +30,7 @@ export interface InstallerClient {
   openDesktopApp(): Promise<boolean>
   openDesktopAppInstall(): Promise<boolean>
   openProviderSite(): Promise<boolean>
+  probeNetwork(): Promise<NetworkProbeResult>
   resumeInstall(): Promise<InstallExecutionResult>
   retryTask(taskId: string): Promise<InstallExecutionResult>
   subscribeLogs(listener: (event: InstallLogEvent) => void): () => void
@@ -141,6 +144,17 @@ const browserInstallerClient: InstallerClient = {
     }
 
     return true
+  },
+
+  async probeNetwork() {
+    // Browser preview can't open a TCP socket to the LAN box; assume the
+    // external address so the UI still shows a sensible resolved endpoint.
+    const resolved = resolveProvider('solaeon', 'auto', false)
+    return {
+      internalReachable: false,
+      resolvedBaseUrl: resolved.baseUrl,
+      network: (resolved.network ?? 'external') as 'internal' | 'external'
+    }
   },
 
   async resumeInstall() {
@@ -313,6 +327,8 @@ function getIpcRendererApi(): RendererInstallerApi | null {
         ipcRenderer.invoke(ipcChannels.openDesktopAppInstall) as Promise<boolean>,
       openProviderSite: () =>
         ipcRenderer.invoke(ipcChannels.openProviderSite) as Promise<boolean>,
+      probeNetwork: () =>
+        ipcRenderer.invoke(ipcChannels.probeNetwork) as Promise<NetworkProbeResult>,
       resumeInstall: () =>
         ipcRenderer.invoke(ipcChannels.resumeInstall) as Promise<InstallExecutionResult>,
       retryTask: (taskId) =>

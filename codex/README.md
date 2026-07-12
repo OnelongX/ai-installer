@@ -61,11 +61,22 @@ chmod +x install_codex.sh
 
 去 [https://livetoken.top](https://livetoken.top) 注册并生成一把 Key，形如 `sk-xxx...`。
 
-### 2. 启动安装器，输入 API Key
+### 2. 启动安装器，选服务地址 + 输入 API Key
 
-双击便携版 `.exe` 或安装后从桌面启动。进入欢迎页 → 在「API Key」输入框粘贴你的 LiveToken Key（以 `sk-` 开头），点"继续"。
+双击便携版 `.exe` 或安装后从桌面启动。进入欢迎页 → 先选「模型服务地址」，再在「API Key」输入框粘贴 Key（以 `sk-` 开头），点"继续"。
 
 ![输入 API Key](docs/screenshots/02-api-key-filled.png)
+
+**模型服务地址**支持四种：
+
+| 选项 | base_url | 说明 |
+|---|---|---|
+| LiveToken | `https://livetoken.top/v1` | 公共网关，默认 |
+| Solaeon · 自动 | 探测后决定 | 装的时候先 TCP 探 `192.168.1.101:48760`，通就用内网，不通回落外网 |
+| Solaeon · 内网 | `http://192.168.1.101:48760` | 强制内网（LAN 直连） |
+| Solaeon · 外网 | `https://ai-api.solaeon.com` | 强制外网 |
+
+选 **Solaeon · 自动** 时，界面会当场探测一次内网并显示最终用哪个地址；执行安装那一刻还会再探一次，以现场结果为准。
 
 > 如果之前装过，安装器会自动检测到已有 Key，可以直接复用。
 

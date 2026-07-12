@@ -9,8 +9,10 @@ import type {
   ValidationResult
 } from '../../shared/ipc'
 import { isApiKeyValueValid } from '../../renderer/features/api-key/api-key-state'
+import { resolveProvider } from '../../shared/provider-config'
 import { buildInstallPlan } from './plan'
 import { createConfigDetectionItem } from './tasks/detect-config'
+import { probeSolaeonInternal } from './tasks/detect-network'
 import { detectCodex } from './tasks/detect-codex'
 import { detectNode } from './tasks/detect-node'
 import { detectSystem } from './tasks/detect-system'
@@ -155,6 +157,16 @@ export function createInstallerService(deps: InstallerServiceDeps) {
       return buildInstallPlan(input)
     },
 
+    async probeNetwork() {
+      const internalReachable = await probeSolaeonInternal()
+      const resolved = resolveProvider('solaeon', 'auto', internalReachable)
+      return {
+        internalReachable,
+        resolvedBaseUrl: resolved.baseUrl,
+        network: resolved.network ?? 'external'
+      }
+    },
+
     async startInstall(input: StartInstallRequest): Promise<InstallExecutionResult> {
       const logs: string[] = []
       const configPath = getConfigTomlPath(deps.userProfile)
@@ -273,14 +285,42 @@ export function createInstallerService(deps: InstallerServiceDeps) {
               break
             }
             case 'write-config': {
+              const providerId = input.provider ?? 'livetoken'
+              const networkMode = input.networkMode ?? 'auto'
+
+              // For Solaeon in auto mode, probe the LAN box now and pick the
+              // reachable address. livetoken and forced internal/external skip
+              // the probe entirely.
+              let internalReachable = false
+              if (providerId === 'solaeon' && networkMode === 'auto') {
+                internalReachable = await probeSolaeonInternal()
+                await emitLog({
+                  level: 'info',
+                  message: internalReachable
+                    ? '内网 192.168.1.101:48760 可达，使用内网地址'
+                    : '内网不可达，回落到外网 ai-api.solaeon.com',
+                  taskId: task,
+                  type: 'task-output'
+                })
+              }
+
+              const resolvedProvider = resolveProvider(
+                providerId,
+                networkMode,
+                internalReachable
+              )
+
               await emitLog({
                 level: 'info',
-                message: `写入 ${configPath}`,
+                message: `写入 ${configPath}（provider=${resolvedProvider.name}, base_url=${resolvedProvider.baseUrl}）`,
                 taskId: task,
                 type: 'task-output'
               })
               await deps.mkdir(path.dirname(configPath))
-              await deps.writeFile(configPath, buildConfigToml({ mode: 'official' }))
+              await deps.writeFile(
+                configPath,
+                buildConfigToml({ provider: resolvedProvider })
+              )
               break
             }
             case 'verify-codex-runtime': {
