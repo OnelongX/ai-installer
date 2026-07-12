@@ -1,0 +1,7 @@
+{
+  "tag_name": "v0.1.7",
+  "name": "v0.1.7 — 复用卡真检测 + 显示按钮内嵌 + install_claude.sh 同步",
+  "body": "## What changed\n\n- **复用卡真检测**：「继续使用已检测到的 Key」只在真检测到 `ANTHROPIC_AUTH_TOKEN` 时才显示（之前硬编码假数据一直显示）。\n- **显示按钮内嵌**：API Key 的显示/隐藏改成输入框内嵌无边框文字按钮 + 等宽字体。\n- **install_claude.sh（mac/Linux/WSL）同步到 v0.1.6 配置**：SolaEon 默认 + 7 模型 + `ANTHROPIC_AUTH_TOKEN` + tier 默认，加 `--provider` 参数、HTTPS 守卫、curl/wget 装前网关验证。之前 mac/Linux 用户装出来的还是旧的 LiveToken/sonnet-4-6 配置。\n\n## Verified\n\n- 97 unit + component tests pass\n- Packaged smoke test green\n\n## Download\n\n| 文件 | 类型 |\n|---|---|\n| `Claude-Installer-Portable-0.1.7.exe` | Claude · 便携 |\n| `Claude-Installer-Setup-0.1.7.exe` | Claude · NSIS |",
+  "draft": false,
+  "prerelease": false
+}

@@ -2,7 +2,7 @@
 
 一个 Windows 桌面工具，零配置帮你在本机装好 [Codex CLI](https://www.npmjs.com/package/@openai/codex) 并接入 [LiveToken](https://livetoken.top/) 网关。
 
-![release](https://img.shields.io/badge/release-0.1.3-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
+![release](https://img.shields.io/badge/release-0.1.4-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
 
 > Claude Code 安装器在 [`../claude/`](../claude/)。两个安装器共享同一套底层框架。
 
@@ -29,8 +29,8 @@
 
 | 类型 | 文件 | 适用场景 |
 |---|---|---|
-| 便携版 | [`Codex-Installer-Portable-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/codex-v0.1.3/Codex-Installer-Portable-0.1.3.exe) | 双击即用，不写注册表 |
-| 安装包 | [`Codex-Installer-Setup-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/codex-v0.1.3/Codex-Installer-Setup-0.1.3.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
+| 便携版 | [`Codex-Installer-Portable-0.1.4.exe`](https://github.com/OnelongX/ai-installer/releases/download/codex-v0.1.4/Codex-Installer-Portable-0.1.4.exe) | 双击即用，不写注册表 |
+| 安装包 | [`Codex-Installer-Setup-0.1.4.exe`](https://github.com/OnelongX/ai-installer/releases/download/codex-v0.1.4/Codex-Installer-Setup-0.1.4.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
 
 ## macOS / Linux / WSL
 

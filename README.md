@@ -28,14 +28,14 @@
 
 ## 下载
 
-最新版本：[Releases v0.1.6](https://github.com/OnelongX/ai-installer/releases/tag/v0.1.6)（Claude 0.1.6 / Codex 0.1.3）
+最新版本：[Releases v0.1.7](https://github.com/OnelongX/ai-installer/releases/tag/v0.1.7)（Claude 0.1.7 / Codex 0.1.4）
 
 | 文件 | 类型 |
 |---|---|
-| [`Claude-Installer-Portable-0.1.6.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.6/Claude-Installer-Portable-0.1.6.exe) | Claude · 便携 |
-| [`Claude-Installer-Setup-0.1.6.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.6/Claude-Installer-Setup-0.1.6.exe) | Claude · NSIS |
-| [`Codex-Installer-Portable-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/codex-v0.1.3/Codex-Installer-Portable-0.1.3.exe) | Codex · 便携 |
-| [`Codex-Installer-Setup-0.1.3.exe`](https://github.com/OnelongX/ai-installer/releases/download/codex-v0.1.3/Codex-Installer-Setup-0.1.3.exe) | Codex · NSIS |
+| [`Claude-Installer-Portable-0.1.7.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.7/Claude-Installer-Portable-0.1.7.exe) | Claude · 便携 |
+| [`Claude-Installer-Setup-0.1.7.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.7/Claude-Installer-Setup-0.1.7.exe) | Claude · NSIS |
+| [`Codex-Installer-Portable-0.1.4.exe`](https://github.com/OnelongX/ai-installer/releases/download/codex-v0.1.4/Codex-Installer-Portable-0.1.4.exe) | Codex · 便携 |
+| [`Codex-Installer-Setup-0.1.4.exe`](https://github.com/OnelongX/ai-installer/releases/download/codex-v0.1.4/Codex-Installer-Setup-0.1.4.exe) | Codex · NSIS |
 
 文件未签名，Windows SmartScreen 第一次会提示"未识别的应用"，点"更多信息 → 仍要运行"即可。
 

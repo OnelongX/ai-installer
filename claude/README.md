@@ -2,7 +2,7 @@
 
 一个 Windows 桌面工具，零配置帮你在本机装好 [Claude Code CLI](https://docs.anthropic.com/claude/docs/claude-code) **和 Claude Desktop**，并接入 [SolaEon](https://ai-api.solaeon.com)（默认）或 [LiveToken](https://livetoken.top/) 网关。
 
-![release](https://img.shields.io/badge/release-0.1.6-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
+![release](https://img.shields.io/badge/release-0.1.7-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
 
 ---
 
@@ -30,8 +30,8 @@
 
 | 类型 | 文件 | 适用场景 |
 |---|---|---|
-| 便携版 | [`Claude-Installer-Portable-0.1.6.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.6/Claude-Installer-Portable-0.1.6.exe) | 双击即用，不写注册表 |
-| 安装包 | [`Claude-Installer-Setup-0.1.6.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.6/Claude-Installer-Setup-0.1.6.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
+| 便携版 | [`Claude-Installer-Portable-0.1.7.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.7/Claude-Installer-Portable-0.1.7.exe) | 双击即用，不写注册表 |
+| 安装包 | [`Claude-Installer-Setup-0.1.7.exe`](https://github.com/OnelongX/ai-installer/releases/download/v0.1.7/Claude-Installer-Setup-0.1.7.exe) | 标准 NSIS 安装到 Program Files，带桌面快捷方式 |
 
 ## macOS / Linux / WSL
 
