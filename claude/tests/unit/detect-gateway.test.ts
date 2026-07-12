@@ -49,4 +49,17 @@ describe('detect-gateway checkGatewayModels', () => {
     expect(result.ok).toBe(false)
     expect(result.error).toContain('ECONNREFUSED')
   })
+
+  it('rejects a non-HTTPS gateway before making any request', async () => {
+    let called = false
+    const spyFetch = async () => {
+      called = true
+      return { ok: true, status: 200, text: async () => '[]' }
+    }
+    const httpProvider = { id: 'solaeon' as const, name: 'SolaEon', baseUrl: 'http://192.168.1.101:48760' }
+    const result = await checkGatewayModels(httpProvider, 'sk', spyFetch)
+    expect(result.ok).toBe(false)
+    expect(result.error).toContain('HTTPS')
+    expect(called).toBe(false)
+  })
 })

@@ -8,6 +8,10 @@
 // catalog and differ only in base_url. Auth is always a Bearer token
 // (ANTHROPIC_AUTH_TOKEN), which is the gateway path the official Claude Code
 // docs recommend.
+//
+// IMPORTANT: base_url must be HTTPS. Claude Code and Claude Desktop reject a
+// plain http:// gateway, so there is no LAN/http option here (unlike Codex,
+// which is OpenAI-compatible and accepts the http://192.168.1.101:48760 box).
 
 export type ProviderId = 'solaeon' | 'livetoken'
 

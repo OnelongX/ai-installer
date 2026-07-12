@@ -53,8 +53,21 @@ export async function checkGatewayModels(
   fetchImpl: FetchLike = globalThis.fetch as unknown as FetchLike,
   timeoutMs = 15_000
 ): Promise<GatewayCheckResult> {
-  const url = `${provider.baseUrl.replace(/\/$/, '')}/v1/models`
   const required = baseModelIds()
+
+  // Claude Code and Claude Desktop only accept HTTPS gateway URLs — a plain
+  // http:// base_url is rejected by the client before any request is made.
+  // Fail loudly here rather than writing a config Claude will silently ignore.
+  if (!/^https:\/\//i.test(provider.baseUrl)) {
+    return {
+      ok: false,
+      discovered: [],
+      missing: required,
+      error: `Claude 只支持 HTTPS 网关，但 ${provider.name} 的地址是 ${provider.baseUrl}`
+    }
+  }
+
+  const url = `${provider.baseUrl.replace(/\/$/, '')}/v1/models`
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)

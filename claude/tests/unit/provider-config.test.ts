@@ -27,6 +27,11 @@ describe('claude provider-config', () => {
     expect(resolveProvider('livetoken').baseUrl).not.toMatch(/\/v1$/)
   })
 
+  it('every provider base_url is HTTPS (Claude rejects http gateways)', () => {
+    expect(resolveProvider('solaeon').baseUrl).toMatch(/^https:\/\//)
+    expect(resolveProvider('livetoken').baseUrl).toMatch(/^https:\/\//)
+  })
+
   it('exposes exactly 7 base models in order', () => {
     expect(baseModelIds()).toEqual([
       'claude-sonnet-5',
