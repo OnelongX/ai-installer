@@ -63,13 +63,13 @@ Node 缺失时脚本会按 `brew → apt/dnf/pacman/zypper → fnm` 顺序自动
 
 去 [https://livetoken.top](https://livetoken.top) 注册并生成一把 Key，形如 `sk-ant-xxx...` 或 `sk-xxx...`。
 
-### 2. 启动安装器，输入 API Key
+### 2. 启动安装器，选网关 + 输入 API Key
 
-双击便携版 `.exe` 或安装后从桌面启动。进入欢迎页 → 在「API Key」输入框粘贴你的 LiveToken Key（以 `sk-` 开头），点"继续"。
+双击便携版 `.exe` 或安装后从桌面启动。进入欢迎页 → 先选「模型服务网关」（SolaEon 默认 / LiveToken），再在「API Key」输入框粘贴 Key（以 `sk-` 开头），点"继续"。
 
-![输入 API Key](docs/screenshots/02-api-key-filled.png)
+![选网关 + 输入 API Key](docs/screenshots/02-api-key-filled.png)
 
-> 如果之前装过，安装器会自动检测到已有 Key，可以直接复用。
+> 如果之前装过（`ANTHROPIC_AUTH_TOKEN` 已设），安装器会检测到并让你直接复用。
 
 ### 3. 查看环境检测
 

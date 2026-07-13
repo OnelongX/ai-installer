@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: test (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [claude, codex]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Not `npm ci` — the lockfiles were seeded from a shared workspace and
+      # may drift; `npm install` keeps the first run green. Revisit once the
+      # lockfiles are regenerated per-subproject.
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+
+      - name: Unit + component tests
+        run: npx vitest run tests/unit tests/component
+
+      - name: Build (electron-vite)
+        run: npm run build
