@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { resolveProvider } from '../../src/shared/provider-config'
-import { modelsFromGateway } from '../../src/shared/models'
+import { codexModels, mergeGatewayModels } from '../../src/shared/models'
 import {
   checkGatewayReachable,
   fetchGatewayModelIds,
@@ -89,14 +89,20 @@ describe('codex detect-gateway', () => {
     ).toEqual([])
   })
 
-  it('modelsFromGateway keeps curated detail and uses gateway label for unknowns', () => {
-    const cards = modelsFromGateway([
+  it('mergeGatewayModels keeps built-in models (deepseek/kimi) and appends new gateway ones', () => {
+    // Gateway only lists GPT/Codex — deepseek/kimi are not advertised.
+    const merged = mergeGatewayModels([
       { id: 'gpt-5.6-sol', label: 'ignored' },
       { id: 'gpt-5.3-codex', label: 'GPT-5.3-Codex' }
     ])
-    expect(cards[0].label).toBe('GPT-5.6 Sol')
-    expect(cards[0].detail).toBe('OpenAI · 旗舰，最强编码')
-    expect(cards[1]).toEqual({
+    // Every curated model survives — the whole built-in catalog is the prefix.
+    expect(merged.slice(0, codexModels.length)).toEqual(codexModels)
+    expect(merged.some((m) => m.id === 'deepseek-v4-flash')).toBe(true)
+    expect(merged.some((m) => m.id === 'kimi-k3')).toBe(true)
+    // Curated label/detail win over the gateway's for known ids.
+    expect(merged.find((m) => m.id === 'gpt-5.6-sol')?.detail).toBe('OpenAI · 旗舰，最强编码')
+    // A gateway model we don't know about is appended with the gateway label.
+    expect(merged.find((m) => m.id === 'gpt-5.3-codex')).toEqual({
       id: 'gpt-5.3-codex',
       label: 'GPT-5.3-Codex',
       detail: '网关模型'

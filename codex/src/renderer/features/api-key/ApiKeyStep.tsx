@@ -4,7 +4,7 @@ import type { NetworkProbeResult } from '../../../shared/ipc'
 import {
   codexModels,
   DEFAULT_MODEL,
-  modelsFromGateway,
+  mergeGatewayModels,
   type CodexModel,
   type GatewayModel
 } from '../../../shared/models'
@@ -144,10 +144,12 @@ export function ApiKeyStep({
         if (gatewayModels.length === 0) {
           return
         }
-        const next = modelsFromGateway(gatewayModels)
+        // Union: keep the curated list (incl. deepseek / kimi) and append any
+        // new models the gateway reports. Never drops a built-in model.
+        const next = mergeGatewayModels(gatewayModels)
         setAvailableModels(next)
         setModelsFromGateway(true)
-        // Keep the selection if still offered, else pick the first live model.
+        // Selection stays valid (merged ⊇ built-in), but guard anyway.
         if (!next.some((m) => m.id === model)) {
           setModel(next[0].id)
         }

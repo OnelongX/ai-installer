@@ -43,17 +43,21 @@ export interface GatewayModel {
 }
 
 /**
- * Turn the gateway's live model list into CodexModel cards. Known IDs keep their
- * curated Chinese detail; unknown IDs (a brand-new model the gateway just added)
- * use the gateway's own display name so they still read nicely. Used when the
- * installer populates the picker live from /v1/models.
+ * Merge the gateway's live model list onto the built-in catalog. The curated
+ * list (which includes gateway-passthrough models like deepseek / kimi that the
+ * gateway may route but not advertise in /v1/models) is ALWAYS kept, so those
+ * never disappear when a live fetch succeeds. Any model the gateway reports that
+ * we don't already know about is appended, using the gateway's own display name.
+ *
+ * This is a union, not a replace: a successful fetch enriches the picker with
+ * newly-added gateway models without ever dropping a curated one.
  */
-export function modelsFromGateway(list: GatewayModel[]): CodexModel[] {
-  return list.map(({ id, label }) => {
-    const known = codexModels.find((m) => m.id === id)
-    if (known) {
-      return known
+export function mergeGatewayModels(list: GatewayModel[]): CodexModel[] {
+  const merged: CodexModel[] = [...codexModels]
+  for (const { id, label } of list) {
+    if (!merged.some((m) => m.id === id)) {
+      merged.push({ id, label: label || id, detail: '网关模型' })
     }
-    return { id, label: label || id, detail: '网关模型' }
-  })
+  }
+  return merged
 }

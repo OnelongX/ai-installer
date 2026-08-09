@@ -11,6 +11,8 @@ const expectedConfigToml = [
   'personality = "pragmatic"',
   'model = "gpt-5.5"',
   'model_provider = "cm"',
+  'preferred_auth_method = "apikey"',
+  'forced_login_method = "api"',
   'review_model = "gpt-5.5"',
   'model_reasoning_effort = "high"',
   'plan_mode_reasoning_effort = "xhigh"',
@@ -55,6 +57,12 @@ describe('windows config generation', () => {
     const toml = buildConfigToml()
     expect(toml).toContain('model = "gpt-5.5"')
     expect(toml).toContain('review_model = "gpt-5.5"')
+  })
+
+  it('forces api-key auth so Codex uses the key instead of ChatGPT login', () => {
+    const toml = buildConfigToml()
+    expect(toml).toContain('preferred_auth_method = "apikey"')
+    expect(toml).toContain('forced_login_method = "api"')
   })
 
   it('writes the chosen model into model + review_model', () => {

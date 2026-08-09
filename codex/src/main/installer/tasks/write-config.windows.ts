@@ -31,6 +31,11 @@ function renderConfigToml(provider: ResolvedProvider, model: string) {
     'personality = "pragmatic"',
     `model = "${model}"`,
     'model_provider = "cm"',
+    // Force API-key auth for the custom provider. Without these Codex falls back
+    // to ChatGPT login and never uses env_key (per DeepSeek's Codex doc). Needed
+    // for any api-key gateway (SolaEon / LiveToken / DeepSeek passthrough).
+    'preferred_auth_method = "apikey"',
+    'forced_login_method = "api"',
     `review_model = "${model}"`,
     'model_reasoning_effort = "high"',
     'plan_mode_reasoning_effort = "xhigh"',
