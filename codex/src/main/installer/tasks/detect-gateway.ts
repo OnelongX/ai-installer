@@ -1,3 +1,4 @@
+import type { GatewayModel } from '../../../shared/models'
 import type { ResolvedProvider } from '../../../shared/provider-config'
 
 // Before writing config.toml we hit the gateway's /v1/models endpoint to make
@@ -28,26 +29,50 @@ export function modelsEndpoint(baseUrl: string): string {
   return `${root}/v1/models`
 }
 
-function extractModelIds(raw: string): string[] {
+// Gateways disagree on the envelope. OpenAI-standard is `{data:[{id}]}`, but the
+// SolaEon Codex gateway answers `{models:[{slug, display_name}]}`. Accept a bare
+// array too. We read id-or-slug for the value and display_name/name/label for a
+// human label, so both shapes populate the picker.
+function extractModels(raw: string): GatewayModel[] {
   try {
     const doc = JSON.parse(raw) as unknown
+    const container = doc as { data?: unknown[]; models?: unknown[] } | null
     const list = Array.isArray(doc)
       ? doc
-      : doc && typeof doc === 'object' && Array.isArray((doc as { data?: unknown[] }).data)
-        ? (doc as { data: unknown[] }).data
-        : []
+      : container && Array.isArray(container.models)
+        ? container.models
+        : container && Array.isArray(container.data)
+          ? container.data
+          : []
     return list
-      .map((entry) =>
-        typeof entry === 'string'
-          ? entry
-          : entry && typeof entry === 'object'
-            ? String((entry as { id?: unknown }).id ?? '')
-            : ''
-      )
-      .filter((id) => id.length > 0)
+      .map((entry): GatewayModel => {
+        if (typeof entry === 'string') {
+          return { id: entry, label: entry }
+        }
+        if (entry && typeof entry === 'object') {
+          const record = entry as {
+            id?: unknown
+            slug?: unknown
+            display_name?: unknown
+            name?: unknown
+            label?: unknown
+          }
+          const id = String(record.id ?? record.slug ?? '')
+          const label = String(
+            record.display_name ?? record.name ?? record.label ?? id
+          )
+          return { id, label }
+        }
+        return { id: '', label: '' }
+      })
+      .filter((model) => model.id.length > 0)
   } catch {
     return []
   }
+}
+
+function extractModelIds(raw: string): string[] {
+  return extractModels(raw).map((model) => model.id)
 }
 
 function countModels(raw: string): number {
@@ -55,16 +80,16 @@ function countModels(raw: string): number {
 }
 
 /**
- * Fetch the gateway's model IDs so the installer can populate its model picker
- * from /v1/models instead of a hardcoded list. Returns [] on any failure — the
- * renderer then keeps its built-in fallback list.
+ * Fetch the gateway's models (id + label) so the installer can populate its
+ * model picker from /v1/models instead of a hardcoded list. Returns [] on any
+ * failure — the renderer then keeps its built-in fallback list.
  */
-export async function fetchGatewayModelIds(
+export async function fetchGatewayModels(
   provider: ResolvedProvider,
   apiKey: string,
   fetchImpl: FetchLike = globalThis.fetch as unknown as FetchLike,
   timeoutMs = 15_000
-): Promise<string[]> {
+): Promise<GatewayModel[]> {
   const url = modelsEndpoint(provider.baseUrl)
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -76,12 +101,24 @@ export async function fetchGatewayModelIds(
     if (!response.ok) {
       return []
     }
-    return extractModelIds(await response.text())
+    return extractModels(await response.text())
   } catch {
     return []
   } finally {
     clearTimeout(timer)
   }
+}
+
+/** Id-only variant, kept for callers/tests that only need the identifiers. */
+export async function fetchGatewayModelIds(
+  provider: ResolvedProvider,
+  apiKey: string,
+  fetchImpl: FetchLike = globalThis.fetch as unknown as FetchLike,
+  timeoutMs = 15_000
+): Promise<string[]> {
+  return (await fetchGatewayModels(provider, apiKey, fetchImpl, timeoutMs)).map(
+    (model) => model.id
+  )
 }
 
 export async function checkGatewayReachable(

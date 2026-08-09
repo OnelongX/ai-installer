@@ -1,3 +1,4 @@
+import type { GatewayModel } from './models'
 import type { NetworkMode, ProviderId } from './provider-config'
 
 export interface DetectionItemData {
@@ -50,8 +51,8 @@ export interface ListModelsRequest {
 }
 
 export interface ListModelsResult {
-  /** model IDs the gateway reported (empty → caller keeps its fallback list) */
-  models: string[]
+  /** models the gateway reported (empty → caller keeps its fallback list) */
+  models: GatewayModel[]
 }
 
 export interface ValidationResult {

@@ -11,7 +11,7 @@ import type {
 import { isApiKeyValueValid } from '../../renderer/features/api-key/api-key-state'
 import { resolveProvider } from '../../shared/provider-config'
 import { buildInstallPlan } from './plan'
-import { checkGatewayReachable, fetchGatewayModelIds } from './tasks/detect-gateway'
+import { checkGatewayReachable, fetchGatewayModels } from './tasks/detect-gateway'
 import { createConfigDetectionItem } from './tasks/detect-config'
 import { probeSolaeonInternal } from './tasks/detect-network'
 import { detectCodex } from './tasks/detect-codex'
@@ -180,7 +180,12 @@ export function createInstallerService(deps: InstallerServiceDeps) {
         internalReachable = await probeSolaeonInternal()
       }
       const resolved = resolveProvider(providerId, networkMode, internalReachable)
-      const models = await fetchGatewayModelIds(resolved, input.apiKey)
+      // The gateway serves both Codex (gpt-*/deepseek-*/kimi-*) and Claude
+      // models on one /v1/models. The Claude ones belong to the Claude
+      // installer — drop them so the Codex picker only offers Codex models.
+      const models = (await fetchGatewayModels(resolved, input.apiKey)).filter(
+        (model) => !model.id.startsWith('claude')
+      )
       return { models }
     },
 

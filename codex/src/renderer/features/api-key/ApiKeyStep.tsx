@@ -4,8 +4,9 @@ import type { NetworkProbeResult } from '../../../shared/ipc'
 import {
   codexModels,
   DEFAULT_MODEL,
-  modelsFromIds,
-  type CodexModel
+  modelsFromGateway,
+  type CodexModel,
+  type GatewayModel
 } from '../../../shared/models'
 import type { NetworkMode, ProviderId } from '../../../shared/provider-config'
 import {
@@ -65,7 +66,7 @@ interface ApiKeyStepProps {
     apiKey: string
     provider: ProviderId
     networkMode: NetworkMode
-  }) => Promise<string[]>
+  }) => Promise<GatewayModel[]>
 }
 
 const panelStyle = {
@@ -139,11 +140,11 @@ export function ApiKeyStep({
     const { provider, networkMode } = toProviderAndMode(providerChoice)
     setLoadingModels(true)
     void onListModels({ apiKey: key, provider, networkMode })
-      .then((ids) => {
-        if (ids.length === 0) {
+      .then((gatewayModels) => {
+        if (gatewayModels.length === 0) {
           return
         }
-        const next = modelsFromIds(ids)
+        const next = modelsFromGateway(gatewayModels)
         setAvailableModels(next)
         setModelsFromGateway(true)
         // Keep the selection if still offered, else pick the first live model.

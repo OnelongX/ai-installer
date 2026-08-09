@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import { resolveProvider } from '../../src/shared/provider-config'
-import { modelsFromIds } from '../../src/shared/models'
+import { modelsFromGateway } from '../../src/shared/models'
 import {
   checkGatewayReachable,
   fetchGatewayModelIds,
+  fetchGatewayModels,
   modelsEndpoint
 } from '../../src/main/installer/tasks/detect-gateway'
 
@@ -62,18 +63,43 @@ describe('codex detect-gateway', () => {
     expect(ids).toEqual(['gpt-5.6-sol', 'kimi-k3'])
   })
 
-  it('fetchGatewayModelIds returns [] on failure so the UI keeps its fallback', async () => {
-    expect(await fetchGatewayModelIds(livetoken, 'sk', fakeFetch(401, ''))).toEqual([])
+  it('parses the SolaEon Codex shape ({models:[{slug, display_name}]})', async () => {
+    const models = await fetchGatewayModels(
+      livetoken,
+      'sk',
+      fakeFetch(200, {
+        models: [
+          { slug: 'gpt-5.6-sol', display_name: 'GPT-5.6 Sol' },
+          { slug: 'gpt-5.3-codex', display_name: 'GPT-5.3-Codex' }
+        ]
+      })
+    )
+    expect(models).toEqual([
+      { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' },
+      { id: 'gpt-5.3-codex', label: 'GPT-5.3-Codex' }
+    ])
+  })
+
+  it('fetchGatewayModels returns [] on failure so the UI keeps its fallback', async () => {
+    expect(await fetchGatewayModels(livetoken, 'sk', fakeFetch(401, ''))).toEqual([])
     expect(
-      await fetchGatewayModelIds(livetoken, 'sk', async () => {
+      await fetchGatewayModels(livetoken, 'sk', async () => {
         throw new Error('boom')
       })
     ).toEqual([])
   })
 
-  it('modelsFromIds labels known models and passes unknown ids through', () => {
-    const cards = modelsFromIds(['gpt-5.6-sol', 'some-new-model'])
+  it('modelsFromGateway keeps curated detail and uses gateway label for unknowns', () => {
+    const cards = modelsFromGateway([
+      { id: 'gpt-5.6-sol', label: 'ignored' },
+      { id: 'gpt-5.3-codex', label: 'GPT-5.3-Codex' }
+    ])
     expect(cards[0].label).toBe('GPT-5.6 Sol')
-    expect(cards[1]).toEqual({ id: 'some-new-model', label: 'some-new-model', detail: '网关模型' })
+    expect(cards[0].detail).toBe('OpenAI · 旗舰，最强编码')
+    expect(cards[1]).toEqual({
+      id: 'gpt-5.3-codex',
+      label: 'GPT-5.3-Codex',
+      detail: '网关模型'
+    })
   })
 })

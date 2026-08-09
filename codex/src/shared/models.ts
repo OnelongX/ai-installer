@@ -36,14 +36,24 @@ export function isKnownModel(value: string): boolean {
   return codexModels.some((m) => m.id === value)
 }
 
+/** One entry as returned by the gateway's /v1/models (id + human label). */
+export interface GatewayModel {
+  id: string
+  label: string
+}
+
 /**
- * Turn a list of gateway model IDs into CodexModel cards: known IDs keep their
- * curated label/detail, unknown IDs fall back to the raw id. Used when the
+ * Turn the gateway's live model list into CodexModel cards. Known IDs keep their
+ * curated Chinese detail; unknown IDs (a brand-new model the gateway just added)
+ * use the gateway's own display name so they still read nicely. Used when the
  * installer populates the picker live from /v1/models.
  */
-export function modelsFromIds(ids: string[]): CodexModel[] {
-  return ids.map((id) => {
+export function modelsFromGateway(list: GatewayModel[]): CodexModel[] {
+  return list.map(({ id, label }) => {
     const known = codexModels.find((m) => m.id === id)
-    return known ?? { id, label: id, detail: '网关模型' }
+    if (known) {
+      return known
+    }
+    return { id, label: label || id, detail: '网关模型' }
   })
 }
