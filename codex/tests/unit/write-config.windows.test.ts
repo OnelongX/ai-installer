@@ -51,6 +51,20 @@ describe('windows config generation', () => {
     expect(buildConfigToml()).toBe(expectedConfigToml)
   })
 
+  it('defaults model + review_model to gpt-5.5', () => {
+    const toml = buildConfigToml()
+    expect(toml).toContain('model = "gpt-5.5"')
+    expect(toml).toContain('review_model = "gpt-5.5"')
+  })
+
+  it('writes the chosen model into model + review_model', () => {
+    for (const model of ['gpt-5.6', 'deepseek-v4-flash', 'deepseek-v4-pro', 'kimi-k3']) {
+      const toml = buildConfigToml({ model })
+      expect(toml).toContain(`model = "${model}"`)
+      expect(toml).toContain(`review_model = "${model}"`)
+    }
+  })
+
   it('writes Solaeon internal base_url when forced internal', () => {
     expect(buildConfigToml({ providerId: 'solaeon', networkMode: 'internal' })).toBe(
       solaeonInternalConfig

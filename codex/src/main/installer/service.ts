@@ -344,14 +344,14 @@ export function createInstallerService(deps: InstallerServiceDeps) {
 
               await emitLog({
                 level: 'info',
-                message: `写入 ${configPath}（provider=${resolvedProvider.name}, base_url=${resolvedProvider.baseUrl}）`,
+                message: `写入 ${configPath}（provider=${resolvedProvider.name}, base_url=${resolvedProvider.baseUrl}, model=${input.model ?? 'gpt-5.5'}）`,
                 taskId: task,
                 type: 'task-output'
               })
               await deps.mkdir(path.dirname(configPath))
               await deps.writeFile(
                 configPath,
-                buildConfigToml({ provider: resolvedProvider })
+                buildConfigToml({ provider: resolvedProvider, model: input.model })
               )
               break
             }

@@ -1,5 +1,6 @@
 import path from 'node:path'
 
+import { DEFAULT_MODEL } from '../../../shared/models'
 import {
   resolveProvider,
   type NetworkMode,
@@ -14,6 +15,8 @@ interface BuildConfigTomlOptions {
   providerId?: ProviderId
   networkMode?: NetworkMode
   internalReachable?: boolean
+  /** model id written to `model` + `review_model` (default: gpt-5.5) */
+  model?: string
 }
 
 interface EnsureConfigTomlDeps {
@@ -23,12 +26,12 @@ interface EnsureConfigTomlDeps {
   writeFile(path: string, value: string): Promise<void>
 }
 
-function renderConfigToml(provider: ResolvedProvider) {
+function renderConfigToml(provider: ResolvedProvider, model: string) {
   return [
     'personality = "pragmatic"',
-    'model = "gpt-5.5"',
+    `model = "${model}"`,
     'model_provider = "cm"',
-    'review_model = "gpt-5.5"',
+    `review_model = "${model}"`,
     'model_reasoning_effort = "high"',
     'plan_mode_reasoning_effort = "xhigh"',
     'model_reasoning_summary = "detailed"',
@@ -65,7 +68,7 @@ export function buildConfigToml(options: BuildConfigTomlOptions = {}) {
       options.internalReachable ?? false
     )
 
-  return renderConfigToml(provider)
+  return renderConfigToml(provider, options.model ?? DEFAULT_MODEL)
 }
 
 export function getConfigTomlPath(userProfile: string) {

@@ -27,6 +27,8 @@ export interface StartInstallRequest {
   provider?: ProviderId
   /** for solaeon: auto probes the LAN, internal/external force one address */
   networkMode?: NetworkMode
+  /** model id written to config.toml (default: gpt-5.5) */
+  model?: string
 }
 
 export interface NetworkProbeResult {

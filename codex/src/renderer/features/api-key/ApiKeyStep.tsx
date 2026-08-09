@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 
 import type { NetworkProbeResult } from '../../../shared/ipc'
+import { codexModels, DEFAULT_MODEL } from '../../../shared/models'
 import type { NetworkMode, ProviderId } from '../../../shared/provider-config'
 import {
   canContinueFromApiKeyState,
@@ -51,6 +52,7 @@ interface ApiKeyStepProps {
     keyValue: string
     provider: ProviderId
     networkMode: NetworkMode
+    model: string
   }) => void
   onOpenProviderSite?: () => void
   onProbeNetwork?: () => Promise<NetworkProbeResult>
@@ -100,6 +102,7 @@ export function ApiKeyStep({
   const [showValue, setShowValue] = useState(false)
   const [value, setValue] = useState('')
   const [providerChoice, setProviderChoice] = useState<ProviderChoice>('livetoken')
+  const [model, setModel] = useState<string>(DEFAULT_MODEL)
   const [probe, setProbe] = useState<NetworkProbeResult | null>(null)
   const [probing, setProbing] = useState(false)
 
@@ -250,6 +253,40 @@ export function ApiKeyStep({
             ) : null}
           </div>
 
+          <div style={{ display: 'grid', gap: '10px' }}>
+            <span style={{ color: 'rgba(226, 232, 240, 0.9)' }}>默认模型</span>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '10px'
+              }}
+            >
+              {codexModels.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setModel(m.id)}
+                  style={optionStyle(model === m.id)}
+                >
+                  <strong style={{ fontSize: '0.95rem' }}>{m.label}</strong>
+                  <p
+                    style={{
+                      margin: '6px 0 0',
+                      color: 'rgba(226, 232, 240, 0.7)',
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    {m.detail}
+                  </p>
+                </button>
+              ))}
+            </div>
+            <p style={{ margin: 0, color: 'rgba(148, 163, 184, 0.85)', fontSize: '0.8rem' }}>
+              DeepSeek / Kimi 经 SolaEon 网关透传，同一把 Key 即可切换；装完在 config.toml 里也能随时改。
+            </p>
+          </div>
+
           <label
             style={{
               display: 'grid',
@@ -394,7 +431,8 @@ export function ApiKeyStep({
                 apiKeyMode: toInstallerApiKeyMode(state),
                 keyValue: value,
                 provider,
-                networkMode
+                networkMode,
+                model
               })
             }}
             style={{
