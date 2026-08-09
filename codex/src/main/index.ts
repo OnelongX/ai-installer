@@ -177,6 +177,7 @@ function registerInstallerIpc() {
   ipcMain.handle(ipcChannels.exportDiagnostics, async () => controller.exportDiagnostics())
   ipcMain.handle(ipcChannels.generatePlan, (_event, input) => controller.generatePlan(input))
   ipcMain.handle(ipcChannels.probeNetwork, () => controller.probeNetwork())
+  ipcMain.handle(ipcChannels.listModels, (_event, input) => controller.listModels(input))
   ipcMain.handle(ipcChannels.getExistingApiKey, () => controller.getExistingApiKey())
   ipcMain.handle(ipcChannels.getAppInfo, async () => ({
     title: appShellTitle,

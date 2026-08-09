@@ -221,6 +221,10 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
       return sharedService.probeNetwork()
     },
 
+    listModels(input: Parameters<typeof sharedService.listModels>[0]) {
+      return sharedService.listModels(input)
+    },
+
     getExistingApiKey() {
       return sharedService.getExistingApiKey()
     },

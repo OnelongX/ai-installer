@@ -258,6 +258,7 @@ export default function App({ installerClient }: AppProps) {
             void client.openProviderSite()
           }}
           onProbeNetwork={() => client.probeNetwork()}
+          onListModels={(args) => client.listModels(args).then((r) => r.models)}
           onContinue={({ apiKeyMode, keyValue, provider: chosenProvider, networkMode: chosenMode, model: chosenModel }) => {
             setProvider(chosenProvider)
             setNetworkMode(chosenMode)

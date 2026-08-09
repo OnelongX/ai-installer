@@ -10,6 +10,8 @@ import {
   type InstallLogEvent,
   type ExistingApiKeyResult,
   type InstallPlanData,
+  type ListModelsRequest,
+  type ListModelsResult,
   type NetworkProbeResult,
   type RecoveryStateData,
   type RendererInstallerApi,
@@ -32,6 +34,7 @@ export interface InstallerClient {
   openDesktopAppInstall(): Promise<boolean>
   openProviderSite(): Promise<boolean>
   probeNetwork(): Promise<NetworkProbeResult>
+  listModels(input: ListModelsRequest): Promise<ListModelsResult>
   getExistingApiKey(): Promise<ExistingApiKeyResult>
   resumeInstall(): Promise<InstallExecutionResult>
   retryTask(taskId: string): Promise<InstallExecutionResult>
@@ -157,6 +160,12 @@ const browserInstallerClient: InstallerClient = {
       resolvedBaseUrl: resolved.baseUrl,
       network: (resolved.network ?? 'external') as 'internal' | 'external'
     }
+  },
+
+  async listModels() {
+    // Browser preview can't reach the gateway — return empty so the UI keeps
+    // its built-in fallback model list.
+    return { models: [] as string[] }
   },
 
   async getExistingApiKey() {
@@ -336,6 +345,8 @@ function getIpcRendererApi(): RendererInstallerApi | null {
         ipcRenderer.invoke(ipcChannels.openProviderSite) as Promise<boolean>,
       probeNetwork: () =>
         ipcRenderer.invoke(ipcChannels.probeNetwork) as Promise<NetworkProbeResult>,
+      listModels: (input) =>
+        ipcRenderer.invoke(ipcChannels.listModels, input) as Promise<ListModelsResult>,
       getExistingApiKey: () =>
         ipcRenderer.invoke(ipcChannels.getExistingApiKey) as Promise<ExistingApiKeyResult>,
       resumeInstall: () =>

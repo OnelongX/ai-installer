@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { resolveProvider } from '../../src/shared/provider-config'
+import { modelsFromIds } from '../../src/shared/models'
 import {
   checkGatewayReachable,
+  fetchGatewayModelIds,
   modelsEndpoint
 } from '../../src/main/installer/tasks/detect-gateway'
 
@@ -49,5 +51,29 @@ describe('codex detect-gateway', () => {
     })
     expect(result.ok).toBe(false)
     expect(result.error).toContain('ENOTFOUND')
+  })
+
+  it('fetchGatewayModelIds returns the id list (data-wrapped)', async () => {
+    const ids = await fetchGatewayModelIds(
+      livetoken,
+      'sk',
+      fakeFetch(200, { data: [{ id: 'gpt-5.6-sol' }, { id: 'kimi-k3' }] })
+    )
+    expect(ids).toEqual(['gpt-5.6-sol', 'kimi-k3'])
+  })
+
+  it('fetchGatewayModelIds returns [] on failure so the UI keeps its fallback', async () => {
+    expect(await fetchGatewayModelIds(livetoken, 'sk', fakeFetch(401, ''))).toEqual([])
+    expect(
+      await fetchGatewayModelIds(livetoken, 'sk', async () => {
+        throw new Error('boom')
+      })
+    ).toEqual([])
+  })
+
+  it('modelsFromIds labels known models and passes unknown ids through', () => {
+    const cards = modelsFromIds(['gpt-5.6-sol', 'some-new-model'])
+    expect(cards[0].label).toBe('GPT-5.6 Sol')
+    expect(cards[1]).toEqual({ id: 'some-new-model', label: 'some-new-model', detail: '网关模型' })
   })
 })

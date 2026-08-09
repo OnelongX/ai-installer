@@ -11,7 +11,7 @@ import type {
 import { isApiKeyValueValid } from '../../renderer/features/api-key/api-key-state'
 import { resolveProvider } from '../../shared/provider-config'
 import { buildInstallPlan } from './plan'
-import { checkGatewayReachable } from './tasks/detect-gateway'
+import { checkGatewayReachable, fetchGatewayModelIds } from './tasks/detect-gateway'
 import { createConfigDetectionItem } from './tasks/detect-config'
 import { probeSolaeonInternal } from './tasks/detect-network'
 import { detectCodex } from './tasks/detect-codex'
@@ -166,6 +166,22 @@ export function createInstallerService(deps: InstallerServiceDeps) {
         resolvedBaseUrl: resolved.baseUrl,
         network: resolved.network ?? 'external'
       }
+    },
+
+    async listModels(input: {
+      apiKey: string
+      provider?: 'livetoken' | 'solaeon'
+      networkMode?: 'auto' | 'internal' | 'external'
+    }) {
+      const providerId = input.provider ?? 'livetoken'
+      const networkMode = input.networkMode ?? 'auto'
+      let internalReachable = false
+      if (providerId === 'solaeon' && networkMode === 'auto') {
+        internalReachable = await probeSolaeonInternal()
+      }
+      const resolved = resolveProvider(providerId, networkMode, internalReachable)
+      const models = await fetchGatewayModelIds(resolved, input.apiKey)
+      return { models }
     },
 
     async getExistingApiKey() {

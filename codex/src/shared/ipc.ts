@@ -43,6 +43,17 @@ export type ExistingApiKeyResult =
   | { exists: false }
   | { exists: true; mask: string }
 
+export interface ListModelsRequest {
+  apiKey: string
+  provider?: ProviderId
+  networkMode?: NetworkMode
+}
+
+export interface ListModelsResult {
+  /** model IDs the gateway reported (empty → caller keeps its fallback list) */
+  models: string[]
+}
+
 export interface ValidationResult {
   message?: string
   ok: boolean
@@ -115,6 +126,7 @@ export const ipcChannels = {
   openDesktopAppInstall: 'installer:open-desktop-app-install',
   openProviderSite: 'installer:open-provider-site',
   probeNetwork: 'installer:probe-network',
+  listModels: 'installer:list-models',
   resumeInstall: 'installer:resume',
   retryTask: 'installer:retry-task',
   startInstall: 'installer:start',
@@ -132,6 +144,7 @@ export interface RendererInstallerApi {
   openDesktopAppInstall(): Promise<boolean>
   openProviderSite(): Promise<boolean>
   probeNetwork(): Promise<NetworkProbeResult>
+  listModels(input: ListModelsRequest): Promise<ListModelsResult>
   validateApiKey(input: string): Promise<ValidationResult>
   generatePlan(input: GeneratePlanRequest): Promise<InstallPlanData>
   getExistingApiKey(): Promise<ExistingApiKeyResult>

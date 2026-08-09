@@ -28,7 +28,7 @@ export function modelsEndpoint(baseUrl: string): string {
   return `${root}/v1/models`
 }
 
-function countModels(raw: string): number {
+function extractModelIds(raw: string): string[] {
   try {
     const doc = JSON.parse(raw) as unknown
     const list = Array.isArray(doc)
@@ -36,9 +36,51 @@ function countModels(raw: string): number {
       : doc && typeof doc === 'object' && Array.isArray((doc as { data?: unknown[] }).data)
         ? (doc as { data: unknown[] }).data
         : []
-    return list.length
+    return list
+      .map((entry) =>
+        typeof entry === 'string'
+          ? entry
+          : entry && typeof entry === 'object'
+            ? String((entry as { id?: unknown }).id ?? '')
+            : ''
+      )
+      .filter((id) => id.length > 0)
   } catch {
-    return 0
+    return []
+  }
+}
+
+function countModels(raw: string): number {
+  return extractModelIds(raw).length
+}
+
+/**
+ * Fetch the gateway's model IDs so the installer can populate its model picker
+ * from /v1/models instead of a hardcoded list. Returns [] on any failure — the
+ * renderer then keeps its built-in fallback list.
+ */
+export async function fetchGatewayModelIds(
+  provider: ResolvedProvider,
+  apiKey: string,
+  fetchImpl: FetchLike = globalThis.fetch as unknown as FetchLike,
+  timeoutMs = 15_000
+): Promise<string[]> {
+  const url = modelsEndpoint(provider.baseUrl)
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetchImpl(url, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: controller.signal
+    })
+    if (!response.ok) {
+      return []
+    }
+    return extractModelIds(await response.text())
+  } catch {
+    return []
+  } finally {
+    clearTimeout(timer)
   }
 }
 

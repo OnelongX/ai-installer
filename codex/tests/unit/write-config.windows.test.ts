@@ -58,7 +58,7 @@ describe('windows config generation', () => {
   })
 
   it('writes the chosen model into model + review_model', () => {
-    for (const model of ['gpt-5.6', 'deepseek-v4-flash', 'deepseek-v4-pro', 'kimi-k3']) {
+    for (const model of ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.4', 'gpt-5.4-mini', 'deepseek-v4-flash', 'deepseek-v4-pro', 'kimi-k3']) {
       const toml = buildConfigToml({ model })
       expect(toml).toContain(`model = "${model}"`)
       expect(toml).toContain(`review_model = "${model}"`)

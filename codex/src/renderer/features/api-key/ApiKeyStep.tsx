@@ -1,7 +1,12 @@
 import { useState, type CSSProperties } from 'react'
 
 import type { NetworkProbeResult } from '../../../shared/ipc'
-import { codexModels, DEFAULT_MODEL } from '../../../shared/models'
+import {
+  codexModels,
+  DEFAULT_MODEL,
+  modelsFromIds,
+  type CodexModel
+} from '../../../shared/models'
 import type { NetworkMode, ProviderId } from '../../../shared/provider-config'
 import {
   canContinueFromApiKeyState,
@@ -56,6 +61,11 @@ interface ApiKeyStepProps {
   }) => void
   onOpenProviderSite?: () => void
   onProbeNetwork?: () => Promise<NetworkProbeResult>
+  onListModels?: (args: {
+    apiKey: string
+    provider: ProviderId
+    networkMode: NetworkMode
+  }) => Promise<string[]>
 }
 
 const panelStyle = {
@@ -96,13 +106,17 @@ export function ApiKeyStep({
   canReuseExistingKey = false,
   onContinue,
   onOpenProviderSite,
-  onProbeNetwork
+  onProbeNetwork,
+  onListModels
 }: ApiKeyStepProps) {
   const [mode, setMode] = useState<ApiKeySelectionMode>(null)
   const [showValue, setShowValue] = useState(false)
   const [value, setValue] = useState('')
   const [providerChoice, setProviderChoice] = useState<ProviderChoice>('livetoken')
   const [model, setModel] = useState<string>(DEFAULT_MODEL)
+  const [availableModels, setAvailableModels] = useState<CodexModel[]>(codexModels)
+  const [modelsFromGateway, setModelsFromGateway] = useState(false)
+  const [loadingModels, setLoadingModels] = useState(false)
   const [probe, setProbe] = useState<NetworkProbeResult | null>(null)
   const [probing, setProbing] = useState(false)
 
@@ -115,6 +129,32 @@ export function ApiKeyStep({
       .then((result) => setProbe(result))
       .catch(() => setProbe(null))
       .finally(() => setProbing(false))
+  }
+
+  const refreshModels = () => {
+    const key = value.trim()
+    if (!onListModels || !key) {
+      return
+    }
+    const { provider, networkMode } = toProviderAndMode(providerChoice)
+    setLoadingModels(true)
+    void onListModels({ apiKey: key, provider, networkMode })
+      .then((ids) => {
+        if (ids.length === 0) {
+          return
+        }
+        const next = modelsFromIds(ids)
+        setAvailableModels(next)
+        setModelsFromGateway(true)
+        // Keep the selection if still offered, else pick the first live model.
+        if (!next.some((m) => m.id === model)) {
+          setModel(next[0].id)
+        }
+      })
+      .catch(() => {
+        /* keep the fallback list */
+      })
+      .finally(() => setLoadingModels(false))
   }
 
   const state: ApiKeyViewState = {
@@ -254,7 +294,32 @@ export function ApiKeyStep({
           </div>
 
           <div style={{ display: 'grid', gap: '10px' }}>
-            <span style={{ color: 'rgba(226, 232, 240, 0.9)' }}>默认模型</span>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px'
+              }}
+            >
+              <span style={{ color: 'rgba(226, 232, 240, 0.9)' }}>默认模型</span>
+              <button
+                type="button"
+                onClick={refreshModels}
+                disabled={loadingModels || !value.trim()}
+                style={{
+                  border: '1px solid rgba(125, 211, 252, 0.45)',
+                  background: 'transparent',
+                  color: value.trim() ? '#7dd3fc' : 'rgba(148, 163, 184, 0.55)',
+                  borderRadius: '999px',
+                  padding: '5px 14px',
+                  fontSize: '0.78rem',
+                  cursor: value.trim() ? 'pointer' : 'not-allowed'
+                }}
+              >
+                {loadingModels ? '拉取中…' : '⟳ 从网关拉取'}
+              </button>
+            </div>
             <div
               style={{
                 display: 'grid',
@@ -262,7 +327,7 @@ export function ApiKeyStep({
                 gap: '10px'
               }}
             >
-              {codexModels.map((m) => (
+              {availableModels.map((m) => (
                 <button
                   key={m.id}
                   type="button"
@@ -283,7 +348,9 @@ export function ApiKeyStep({
               ))}
             </div>
             <p style={{ margin: 0, color: 'rgba(148, 163, 184, 0.85)', fontSize: '0.8rem' }}>
-              DeepSeek / Kimi 经 SolaEon 网关透传，同一把 Key 即可切换；装完在 config.toml 里也能随时改。
+              {modelsFromGateway
+                ? '已按网关 /v1/models 实时列出；DeepSeek / Kimi 等经网关透传，同一把 Key 即可切换。'
+                : '默认列表；填好 Key 后点「从网关拉取」可换成网关实时支持的全部模型。'}
             </p>
           </div>
 
@@ -303,6 +370,13 @@ export function ApiKeyStep({
                 onChange={(event) => {
                   setMode('new')
                   setValue(event.target.value)
+                }}
+                onBlur={() => {
+                  // Auto-pull the live model list once a key is present, so the
+                  // picker reflects the gateway without a manual click.
+                  if (!modelsFromGateway && value.trim()) {
+                    refreshModels()
+                  }
                 }}
                 placeholder="sk-..."
                 style={{
