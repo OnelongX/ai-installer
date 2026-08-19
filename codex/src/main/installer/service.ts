@@ -11,6 +11,7 @@ import type {
 import { isApiKeyValueValid } from '../../renderer/features/api-key/api-key-state'
 import { resolveProvider } from '../../shared/provider-config'
 import { buildInstallPlan } from './plan'
+import { buildModelCatalog } from '../../shared/model-catalog'
 import { checkGatewayReachable, fetchGatewayModels } from './tasks/detect-gateway'
 import { createConfigDetectionItem } from './tasks/detect-config'
 import { probeSolaeonInternal } from './tasks/detect-network'
@@ -23,7 +24,8 @@ import { buildPersistApiKeyCommand } from './tasks/persist-api-key.windows'
 import {
   buildConfigToml,
   ensureConfigToml,
-  getConfigTomlPath
+  getConfigTomlPath,
+  getModelCatalogPath
 } from './tasks/write-config.windows'
 
 type ExecResult = {
@@ -362,6 +364,7 @@ export function createInstallerService(deps: InstallerServiceDeps) {
             }
             case 'write-config': {
               const resolvedProvider = await resolveOnce()
+              const catalogPath = getModelCatalogPath(deps.userProfile)
 
               await emitLog({
                 level: 'info',
@@ -372,8 +375,21 @@ export function createInstallerService(deps: InstallerServiceDeps) {
               await deps.mkdir(path.dirname(configPath))
               await deps.writeFile(
                 configPath,
-                buildConfigToml({ provider: resolvedProvider, model: input.model })
+                buildConfigToml({ provider: resolvedProvider, model: input.model, catalogPath })
               )
+
+              // Generate the model catalog so Codex's /model picker lists every
+              // gateway model. Merge the live /v1/models list with EXTRA_MODELS
+              // (ids the passthrough gateway routes but doesn't advertise).
+              const gatewayModels = await fetchGatewayModels(resolvedProvider, input.apiKey)
+              const catalog = buildModelCatalog(gatewayModels.map((m) => m.id))
+              await deps.writeFile(catalogPath, JSON.stringify(catalog, null, 2))
+              await emitLog({
+                level: 'info',
+                message: `写入 ${catalogPath}（${catalog.models.length} 个模型：网关 ${gatewayModels.length} + 内置补充）`,
+                taskId: task,
+                type: 'task-output'
+              })
               break
             }
             case 'verify-codex-runtime': {

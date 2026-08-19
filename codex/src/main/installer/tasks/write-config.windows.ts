@@ -1,6 +1,7 @@
 import path from 'node:path'
 
 import { DEFAULT_MODEL } from '../../../shared/models'
+import { buildModelCatalog } from '../../../shared/model-catalog'
 import {
   resolveProvider,
   type NetworkMode,
@@ -17,6 +18,8 @@ interface BuildConfigTomlOptions {
   internalReachable?: boolean
   /** model id written to `model` + `review_model` (default: gpt-5.5) */
   model?: string
+  /** absolute path to models-catalog.json; when set, emits model_catalog_json */
+  catalogPath?: string
 }
 
 interface EnsureConfigTomlDeps {
@@ -26,11 +29,15 @@ interface EnsureConfigTomlDeps {
   writeFile(path: string, value: string): Promise<void>
 }
 
-function renderConfigToml(provider: ResolvedProvider, model: string) {
+function renderConfigToml(provider: ResolvedProvider, model: string, catalogPath?: string) {
   return [
     'personality = "pragmatic"',
     `model = "${model}"`,
     'model_provider = "cm"',
+    // Point Codex at the generated catalog so its /model picker lists every
+    // gateway model (GPT / Claude / DeepSeek / Kimi), not just OpenAI built-ins.
+    // TOML literal string (single quotes) — no backslash escaping needed.
+    ...(catalogPath ? [`model_catalog_json = '${catalogPath}'`] : []),
     // Force API-key auth for the custom provider. Without these Codex falls back
     // to ChatGPT login and never uses env_key (per DeepSeek's Codex doc). Needed
     // for any api-key gateway (SolaEon / LiveToken / DeepSeek passthrough).
@@ -73,11 +80,15 @@ export function buildConfigToml(options: BuildConfigTomlOptions = {}) {
       options.internalReachable ?? false
     )
 
-  return renderConfigToml(provider, options.model ?? DEFAULT_MODEL)
+  return renderConfigToml(provider, options.model ?? DEFAULT_MODEL, options.catalogPath)
 }
 
 export function getConfigTomlPath(userProfile: string) {
   return path.join(userProfile, '.codex', 'config.toml')
+}
+
+export function getModelCatalogPath(userProfile: string) {
+  return path.join(userProfile, '.codex', 'models-catalog.json')
 }
 
 export async function ensureConfigToml(deps: EnsureConfigTomlDeps) {
@@ -90,10 +101,17 @@ export async function ensureConfigToml(deps: EnsureConfigTomlDeps) {
     }
   }
 
+  const catalogPath = getModelCatalogPath(deps.userProfile)
   await deps.mkdir(path.dirname(configPath))
   // Bootstrap default is the public LiveToken gateway; the real install run
   // (service.startInstall) rewrites this with the user's chosen provider.
-  await deps.writeFile(configPath, buildConfigToml())
+  await deps.writeFile(configPath, buildConfigToml({ catalogPath }))
+  // Write an offline catalog (EXTRA_MODELS only) so config.toml never points at
+  // a missing file; the install run enriches it with the gateway's live list.
+  await deps.writeFile(
+    catalogPath,
+    JSON.stringify(buildModelCatalog([]), null, 2)
+  )
 
   return {
     created: true,

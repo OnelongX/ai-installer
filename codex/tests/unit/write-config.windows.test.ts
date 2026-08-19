@@ -65,6 +65,16 @@ describe('windows config generation', () => {
     expect(toml).toContain('forced_login_method = "api"')
   })
 
+  it('emits model_catalog_json only when a catalog path is given', () => {
+    expect(buildConfigToml()).not.toContain('model_catalog_json')
+    const withCatalog = buildConfigToml({
+      catalogPath: 'C:\\Users\\Administrator\\.codex\\models-catalog.json'
+    })
+    expect(withCatalog).toContain(
+      "model_catalog_json = 'C:\\Users\\Administrator\\.codex\\models-catalog.json'"
+    )
+  })
+
   it('writes the chosen model into model + review_model', () => {
     for (const model of ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.4', 'gpt-5.4-mini', 'deepseek-v4-flash', 'deepseek-v4-pro', 'kimi-k3']) {
       const toml = buildConfigToml({ model })
@@ -109,15 +119,25 @@ describe('windows config generation', () => {
       writeFile
     })
 
+    const catalogPath = path.join(userProfile, '.codex', 'models-catalog.json')
+
     expect(result).toEqual({
       created: true,
       path: path.join(userProfile, '.codex', 'config.toml')
     })
     expect(mkdir).toHaveBeenCalledWith(path.join(userProfile, '.codex'))
+    // config.toml now points at the generated catalog…
     expect(writeFile).toHaveBeenCalledWith(
       path.join(userProfile, '.codex', 'config.toml'),
-      expectedConfigToml
+      expect.stringContaining(`model_catalog_json = '${catalogPath}'`)
     )
+    // …and the catalog file itself is written (offline EXTRA_MODELS at bootstrap).
+    const catalogCall = writeFile.mock.calls.find((c) => c[0] === catalogPath)
+    expect(catalogCall).toBeDefined()
+    const catalog = JSON.parse(catalogCall![1])
+    expect(catalog.models.length).toBeGreaterThan(0)
+    expect(catalog.models.some((m: { slug: string }) => m.slug === 'deepseek-v4-flash')).toBe(true)
+    expect(catalog.models.some((m: { slug: string }) => m.slug === 'kimi-k3')).toBe(true)
   })
 
   it('skips rewriting config.toml when it already exists', async () => {
