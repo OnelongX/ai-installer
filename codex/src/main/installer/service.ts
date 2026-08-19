@@ -191,6 +191,49 @@ export function createInstallerService(deps: InstallerServiceDeps) {
       return { models }
     },
 
+    async syncModels(input: {
+      apiKey?: string
+      provider?: 'livetoken' | 'solaeon'
+      networkMode?: 'auto' | 'internal' | 'external'
+    }) {
+      // Refresh models-catalog.json without a full reinstall. Key comes from the
+      // caller or, failing that, the OPENAI_API_KEY this process already sees
+      // (the same one the persist step wrote and codex itself uses).
+      const apiKey = input.apiKey?.trim() || process.env.OPENAI_API_KEY?.trim()
+      if (!apiKey) {
+        return {
+          ok: false as const,
+          count: 0,
+          path: getModelCatalogPath(deps.userProfile),
+          message: '未找到 API Key：请先在上方填入 Key，或完成一次安装以写入环境变量。'
+        }
+      }
+
+      const providerId = input.provider ?? 'livetoken'
+      const networkMode = input.networkMode ?? 'auto'
+      let internalReachable = false
+      if (providerId === 'solaeon' && networkMode === 'auto') {
+        internalReachable = await probeSolaeonInternal()
+      }
+      const resolved = resolveProvider(providerId, networkMode, internalReachable)
+      const catalogPath = getModelCatalogPath(deps.userProfile)
+
+      // Fetch the live gateway list and rebuild the full catalog (merged with
+      // EXTRA_MODELS). fetchGatewayModels returns [] on failure, so worst case
+      // we still write the offline EXTRA-only catalog rather than an empty one.
+      const gatewayModels = await fetchGatewayModels(resolved, apiKey)
+      const catalog = buildModelCatalog(gatewayModels.map((model) => model.id))
+      await deps.mkdir(path.dirname(catalogPath))
+      await deps.writeFile(catalogPath, JSON.stringify(catalog, null, 2))
+
+      return {
+        ok: true as const,
+        count: catalog.models.length,
+        gatewayCount: gatewayModels.length,
+        path: catalogPath
+      }
+    },
+
     async getExistingApiKey() {
       // OPENAI_API_KEY visible to this process is the same value the codex
       // CLI would pick up. If it's set, offer to reuse it; otherwise the

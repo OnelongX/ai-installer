@@ -225,6 +225,10 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
       return sharedService.listModels(input)
     },
 
+    syncModels(input: Parameters<typeof sharedService.syncModels>[0]) {
+      return sharedService.syncModels(input)
+    },
+
     getExistingApiKey() {
       return sharedService.getExistingApiKey()
     },

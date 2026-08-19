@@ -13,6 +13,7 @@ const api: RendererInstallerApi = {
   openProviderSite: () => ipcRenderer.invoke(ipcChannels.openProviderSite),
   probeNetwork: () => ipcRenderer.invoke(ipcChannels.probeNetwork),
   listModels: (input) => ipcRenderer.invoke(ipcChannels.listModels, input),
+  syncModels: (input) => ipcRenderer.invoke(ipcChannels.syncModels, input),
   getExistingApiKey: () => ipcRenderer.invoke(ipcChannels.getExistingApiKey),
   validateApiKey: (input) => ipcRenderer.invoke(ipcChannels.validateApiKey, input),
   generatePlan: (input) => ipcRenderer.invoke(ipcChannels.generatePlan, input),

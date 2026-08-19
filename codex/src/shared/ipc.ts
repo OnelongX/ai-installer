@@ -55,6 +55,25 @@ export interface ListModelsResult {
   models: GatewayModel[]
 }
 
+export interface SyncModelsRequest {
+  /** falls back to the OPENAI_API_KEY env var when omitted */
+  apiKey?: string
+  provider?: ProviderId
+  networkMode?: NetworkMode
+}
+
+export interface SyncModelsResult {
+  ok: boolean
+  /** total models written to models-catalog.json */
+  count: number
+  /** how many came from the live gateway (rest are EXTRA_MODELS) */
+  gatewayCount?: number
+  /** absolute path of the catalog file */
+  path: string
+  /** set when ok is false */
+  message?: string
+}
+
 export interface ValidationResult {
   message?: string
   ok: boolean
@@ -128,6 +147,7 @@ export const ipcChannels = {
   openProviderSite: 'installer:open-provider-site',
   probeNetwork: 'installer:probe-network',
   listModels: 'installer:list-models',
+  syncModels: 'installer:sync-models',
   resumeInstall: 'installer:resume',
   retryTask: 'installer:retry-task',
   startInstall: 'installer:start',
@@ -146,6 +166,7 @@ export interface RendererInstallerApi {
   openProviderSite(): Promise<boolean>
   probeNetwork(): Promise<NetworkProbeResult>
   listModels(input: ListModelsRequest): Promise<ListModelsResult>
+  syncModels(input: SyncModelsRequest): Promise<SyncModelsResult>
   validateApiKey(input: string): Promise<ValidationResult>
   generatePlan(input: GeneratePlanRequest): Promise<InstallPlanData>
   getExistingApiKey(): Promise<ExistingApiKeyResult>

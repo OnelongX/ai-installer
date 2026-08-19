@@ -259,6 +259,7 @@ export default function App({ installerClient }: AppProps) {
           }}
           onProbeNetwork={() => client.probeNetwork()}
           onListModels={(args) => client.listModels(args).then((r) => r.models)}
+          onSyncModels={(args) => client.syncModels(args)}
           onContinue={({ apiKeyMode, keyValue, provider: chosenProvider, networkMode: chosenMode, model: chosenModel }) => {
             setProvider(chosenProvider)
             setNetworkMode(chosenMode)

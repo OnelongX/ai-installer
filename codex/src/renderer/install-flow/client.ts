@@ -12,6 +12,8 @@ import {
   type InstallPlanData,
   type ListModelsRequest,
   type ListModelsResult,
+  type SyncModelsRequest,
+  type SyncModelsResult,
   type NetworkProbeResult,
   type RecoveryStateData,
   type RendererInstallerApi,
@@ -35,6 +37,7 @@ export interface InstallerClient {
   openProviderSite(): Promise<boolean>
   probeNetwork(): Promise<NetworkProbeResult>
   listModels(input: ListModelsRequest): Promise<ListModelsResult>
+  syncModels(input: SyncModelsRequest): Promise<SyncModelsResult>
   getExistingApiKey(): Promise<ExistingApiKeyResult>
   resumeInstall(): Promise<InstallExecutionResult>
   retryTask(taskId: string): Promise<InstallExecutionResult>
@@ -162,10 +165,20 @@ const browserInstallerClient: InstallerClient = {
     }
   },
 
-  async listModels() {
+  async listModels(): Promise<ListModelsResult> {
     // Browser preview can't reach the gateway — return empty so the UI keeps
     // its built-in fallback model list.
-    return { models: [] as string[] }
+    return { models: [] }
+  },
+
+  async syncModels(): Promise<SyncModelsResult> {
+    // No filesystem / gateway in browser preview.
+    return {
+      ok: false,
+      count: 0,
+      path: '',
+      message: '预览模式无法写入模型目录（需在安装器桌面版中执行）。'
+    }
   },
 
   async getExistingApiKey() {
@@ -347,6 +360,8 @@ function getIpcRendererApi(): RendererInstallerApi | null {
         ipcRenderer.invoke(ipcChannels.probeNetwork) as Promise<NetworkProbeResult>,
       listModels: (input) =>
         ipcRenderer.invoke(ipcChannels.listModels, input) as Promise<ListModelsResult>,
+      syncModels: (input) =>
+        ipcRenderer.invoke(ipcChannels.syncModels, input) as Promise<SyncModelsResult>,
       getExistingApiKey: () =>
         ipcRenderer.invoke(ipcChannels.getExistingApiKey) as Promise<ExistingApiKeyResult>,
       resumeInstall: () =>

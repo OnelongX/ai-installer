@@ -67,6 +67,11 @@ interface ApiKeyStepProps {
     provider: ProviderId
     networkMode: NetworkMode
   }) => Promise<GatewayModel[]>
+  onSyncModels?: (args: {
+    apiKey: string
+    provider: ProviderId
+    networkMode: NetworkMode
+  }) => Promise<{ ok: boolean; count: number; gatewayCount?: number; path: string; message?: string }>
 }
 
 const panelStyle = {
@@ -108,7 +113,8 @@ export function ApiKeyStep({
   onContinue,
   onOpenProviderSite,
   onProbeNetwork,
-  onListModels
+  onListModels,
+  onSyncModels
 }: ApiKeyStepProps) {
   const [mode, setMode] = useState<ApiKeySelectionMode>(null)
   const [showValue, setShowValue] = useState(false)
@@ -120,6 +126,28 @@ export function ApiKeyStep({
   const [loadingModels, setLoadingModels] = useState(false)
   const [probe, setProbe] = useState<NetworkProbeResult | null>(null)
   const [probing, setProbing] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<string | null>(null)
+
+  const syncCatalog = () => {
+    const key = value.trim()
+    if (!onSyncModels || !key) {
+      return
+    }
+    const { provider, networkMode } = toProviderAndMode(providerChoice)
+    setSyncing(true)
+    setSyncStatus(null)
+    void onSyncModels({ apiKey: key, provider, networkMode })
+      .then((result) => {
+        setSyncStatus(
+          result.ok
+            ? `✓ 已更新 Codex 模型目录：共 ${result.count} 个模型（网关 ${result.gatewayCount ?? 0} + 内置补充）。重开 Codex，/model 即可看到。`
+            : `✗ ${result.message ?? '更新失败'}`
+        )
+      })
+      .catch(() => setSyncStatus('✗ 更新失败，请重试。'))
+      .finally(() => setSyncing(false))
+  }
 
   const runProbe = () => {
     if (!onProbeNetwork) {
@@ -306,23 +334,55 @@ export function ApiKeyStep({
               }}
             >
               <span style={{ color: 'rgba(226, 232, 240, 0.9)' }}>默认模型</span>
-              <button
-                type="button"
-                onClick={refreshModels}
-                disabled={loadingModels || !value.trim()}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={refreshModels}
+                  disabled={loadingModels || !value.trim()}
+                  style={{
+                    border: '1px solid rgba(125, 211, 252, 0.45)',
+                    background: 'transparent',
+                    color: value.trim() ? '#7dd3fc' : 'rgba(148, 163, 184, 0.55)',
+                    borderRadius: '999px',
+                    padding: '5px 14px',
+                    fontSize: '0.78rem',
+                    cursor: value.trim() ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  {loadingModels ? '拉取中…' : '⟳ 从网关拉取'}
+                </button>
+                {onSyncModels ? (
+                  <button
+                    type="button"
+                    onClick={syncCatalog}
+                    disabled={syncing || !value.trim()}
+                    title="重新拉取网关并写入 ~/.codex/models-catalog.json，无需重装"
+                    style={{
+                      border: '1px solid rgba(52, 211, 153, 0.5)',
+                      background: 'transparent',
+                      color: value.trim() ? '#34d399' : 'rgba(148, 163, 184, 0.55)',
+                      borderRadius: '999px',
+                      padding: '5px 14px',
+                      fontSize: '0.78rem',
+                      cursor: value.trim() ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    {syncing ? '更新中…' : '⬇ 更新 Codex 模型目录'}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            {syncStatus ? (
+              <p
                 style={{
-                  border: '1px solid rgba(125, 211, 252, 0.45)',
-                  background: 'transparent',
-                  color: value.trim() ? '#7dd3fc' : 'rgba(148, 163, 184, 0.55)',
-                  borderRadius: '999px',
-                  padding: '5px 14px',
-                  fontSize: '0.78rem',
-                  cursor: value.trim() ? 'pointer' : 'not-allowed'
+                  margin: 0,
+                  color: syncStatus.startsWith('✓') ? '#34d399' : '#f87171',
+                  fontSize: '0.8rem'
                 }}
               >
-                {loadingModels ? '拉取中…' : '⟳ 从网关拉取'}
-              </button>
-            </div>
+                {syncStatus}
+              </p>
+            ) : null}
             <div
               style={{
                 display: 'grid',

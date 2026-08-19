@@ -70,6 +70,36 @@ describe('installer service', () => {
     expect(logMessages.some((entry) => entry.endsWith('verify-codex-runtime'))).toBe(true)
   })
 
+  it('syncModels refuses without a key (no env, no input) and does not write', async () => {
+    const prev = process.env.OPENAI_API_KEY
+    delete process.env.OPENAI_API_KEY
+    try {
+      const writes: string[] = []
+      const service = createInstallerService({
+        exec: async () => ({ exitCode: 0, stderr: '', stdout: '' }),
+        fileExists: async () => true,
+        mkdir: async () => {},
+        userProfile: 'C:\\Users\\Administrator',
+        writeFile: async (path) => {
+          writes.push(path)
+        }
+      })
+
+      const result = await service.syncModels({ provider: 'livetoken' })
+
+      expect(result.ok).toBe(false)
+      expect(result.message).toBeTruthy()
+      expect(result.path).toContain('.codex\\models-catalog.json')
+      expect(writes).toHaveLength(0)
+    } finally {
+      if (prev === undefined) {
+        delete process.env.OPENAI_API_KEY
+      } else {
+        process.env.OPENAI_API_KEY = prev
+      }
+    }
+  })
+
   it('does not run npm installation through powershell', async () => {
     const execCalls: Array<{ args?: string[]; command: string }> = []
     const service = createInstallerService({
