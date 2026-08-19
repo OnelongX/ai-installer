@@ -26,6 +26,41 @@ describe('installer service', () => {
     expect(writes[0]?.path).toContain('.claude\\settings.json')
   })
 
+  it('syncModels refuses without a key and writes nothing', async () => {
+    const prevAuth = process.env.ANTHROPIC_AUTH_TOKEN
+    const prevApi = process.env.ANTHROPIC_API_KEY
+    delete process.env.ANTHROPIC_AUTH_TOKEN
+    delete process.env.ANTHROPIC_API_KEY
+    try {
+      const writes: string[] = []
+      const service = createInstallerService({
+        exec: async () => ({ exitCode: 0, stderr: '', stdout: '' }),
+        fileExists: async () => false,
+        mkdir: async () => {},
+        readFile: async () => {
+          throw new Error('no settings.json')
+        },
+        rename: async () => {},
+        userProfile: 'C:\\Users\\Administrator',
+        writeFile: async (path) => {
+          writes.push(path)
+        }
+      })
+
+      const result = await service.syncModels({ provider: 'solaeon' })
+
+      expect(result.ok).toBe(false)
+      expect(result.message).toBeTruthy()
+      expect(result.path).toContain('.claude\\settings.json')
+      expect(writes).toHaveLength(0)
+    } finally {
+      if (prevAuth === undefined) delete process.env.ANTHROPIC_AUTH_TOKEN
+      else process.env.ANTHROPIC_AUTH_TOKEN = prevAuth
+      if (prevApi === undefined) delete process.env.ANTHROPIC_API_KEY
+      else process.env.ANTHROPIC_API_KEY = prevApi
+    }
+  })
+
   it('runs the plan and returns an execution summary', async () => {
     const writes: Array<{ path: string; value: string }> = []
     const logMessages: string[] = []

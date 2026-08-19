@@ -31,6 +31,26 @@ export type ExistingApiKeyResult =
   | { exists: false }
   | { exists: true; mask: string }
 
+export interface SyncModelsRequest {
+  /** falls back to ANTHROPIC_AUTH_TOKEN env / settings.json when omitted */
+  apiKey?: string
+  provider?: ProviderId
+}
+
+export interface SyncModelsResult {
+  ok: boolean
+  /** total models written to settings.json + registry */
+  count: number
+  /** how many came from the live gateway */
+  gatewayCount?: number
+  /** false when the Desktop registry write failed (CLI still updated) */
+  registryOk?: boolean
+  /** settings.json path */
+  path: string
+  /** set when ok is false, or as a warning when registryOk is false */
+  message?: string
+}
+
 export interface ValidationResult {
   message?: string
   ok: boolean
@@ -102,6 +122,7 @@ export const ipcChannels = {
   openDesktopApp: 'installer:open-desktop-app',
   openDesktopAppInstall: 'installer:open-desktop-app-install',
   openProviderSite: 'installer:open-provider-site',
+  syncModels: 'installer:sync-models',
   resumeInstall: 'installer:resume',
   retryTask: 'installer:retry-task',
   startInstall: 'installer:start',
@@ -118,6 +139,7 @@ export interface RendererInstallerApi {
   openDesktopApp(): Promise<boolean>
   openDesktopAppInstall(): Promise<boolean>
   openProviderSite(): Promise<boolean>
+  syncModels(input: SyncModelsRequest): Promise<SyncModelsResult>
   validateApiKey(input: string): Promise<ValidationResult>
   generatePlan(input: GeneratePlanRequest): Promise<InstallPlanData>
   getExistingApiKey(): Promise<ExistingApiKeyResult>

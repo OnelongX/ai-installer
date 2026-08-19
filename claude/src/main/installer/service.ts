@@ -17,7 +17,8 @@ import {
   getOAuthCredentialsPath
 } from './tasks/clear-anthropic-oauth'
 import { createConfigDetectionItem } from './tasks/detect-config'
-import { checkGatewayModels } from './tasks/detect-gateway'
+import { checkGatewayModels, fetchClaudeModels } from './tasks/detect-gateway'
+import { mergeClaudeModels } from '../../shared/model-catalog'
 import { detectClaude } from './tasks/detect-claude'
 import { detectNode } from './tasks/detect-node'
 import { detectSystem } from './tasks/detect-system'
@@ -28,7 +29,8 @@ import { buildWriteRegistryCommand } from './tasks/write-registry.windows'
 import {
   buildSettingsJson,
   ensureSettingsJson,
-  getSettingsJsonPath
+  getSettingsJsonPath,
+  updateAvailableModels
 } from './tasks/write-config.windows'
 
 type ExecResult = {
@@ -46,6 +48,7 @@ interface InstallerServiceDeps {
   fileExists(path: string): Promise<boolean>
   mkdir(path: string): Promise<void>
   onLog?(event: InstallLogEvent): Promise<void> | void
+  readFile(path: string): Promise<string>
   rename(from: string, to: string): Promise<void>
   userProfile: string
   writeFile(path: string, value: string): Promise<void>
@@ -181,6 +184,92 @@ export function createInstallerService(deps: InstallerServiceDeps) {
         return { exists: false as const }
       }
       return { exists: true as const, mask: maskKey(raw) }
+    },
+
+    async syncModels(input: { apiKey?: string; provider?: 'solaeon' | 'livetoken' }) {
+      // Refresh the model list in BOTH client surfaces without a reinstall:
+      //   settings.json  → availableModels (Claude Code CLI)
+      //   registry       → inferenceModels (Claude Desktop)
+      const provider = resolveProvider(input.provider)
+      const settingsPath = getSettingsJsonPath(deps.userProfile)
+
+      let existingRaw: string | null = null
+      try {
+        existingRaw = await deps.readFile(settingsPath)
+      } catch {
+        existingRaw = null
+      }
+
+      // Key: explicit input → env → the token already in settings.json.
+      let apiKey =
+        input.apiKey?.trim() ||
+        process.env.ANTHROPIC_AUTH_TOKEN?.trim() ||
+        process.env.ANTHROPIC_API_KEY?.trim() ||
+        ''
+      if (!apiKey && existingRaw) {
+        try {
+          const env = (JSON.parse(existingRaw) as { env?: Record<string, string> }).env
+          apiKey = env?.ANTHROPIC_AUTH_TOKEN?.trim() || ''
+        } catch {
+          apiKey = ''
+        }
+      }
+      if (!apiKey) {
+        return {
+          ok: false as const,
+          count: 0,
+          path: settingsPath,
+          message: '未找到 API Key：请先在上方填入 Key，或完成一次安装。'
+        }
+      }
+
+      if (!/^https:\/\//i.test(provider.baseUrl)) {
+        return {
+          ok: false as const,
+          count: 0,
+          path: settingsPath,
+          message: `Claude 仅支持 HTTPS 网关，但 ${provider.name} 是 ${provider.baseUrl}`
+        }
+      }
+
+      const gateway = await fetchClaudeModels(provider, apiKey)
+      if (gateway.length === 0) {
+        return {
+          ok: false as const,
+          count: 0,
+          path: settingsPath,
+          message: `网关 ${provider.name} 未返回模型（鉴权失败或不可达），已保留现有列表。`
+        }
+      }
+
+      const models = mergeClaudeModels(gateway)
+      const modelIds = models.map((m) => m.name)
+
+      // 1) settings.json — update in place so the auth token / customisations
+      //    survive; write a fresh one only if it doesn't exist yet.
+      const nextSettings = existingRaw
+        ? updateAvailableModels(existingRaw, modelIds, { provider, apiKey })
+        : buildSettingsJson({ provider, apiKey, availableModelIds: modelIds })
+      await deps.mkdir(path.dirname(settingsPath))
+      await deps.writeFile(settingsPath, nextSettings)
+
+      // 2) registry — rewrite the managed Desktop config with the full list.
+      const command = buildWriteRegistryCommand(provider, apiKey, models)
+      const result = await deps.exec('powershell', ['-NoProfile', '-Command', command], {
+        timeoutMs: VERIFY_TIMEOUT_MS
+      })
+      const registryOk = result.exitCode === 0
+
+      return {
+        ok: true as const,
+        count: models.length,
+        gatewayCount: gateway.length,
+        registryOk,
+        path: settingsPath,
+        message: registryOk
+          ? undefined
+          : 'settings.json 已更新，但 Desktop 注册表写入失败（Claude Code CLI 不受影响）。'
+      }
     },
 
     async startInstall(input: StartInstallRequest): Promise<InstallExecutionResult> {

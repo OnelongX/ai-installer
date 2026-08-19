@@ -13,6 +13,8 @@ import {
   type RecoveryStateData,
   type RendererInstallerApi,
   type StartInstallRequest,
+  type SyncModelsRequest,
+  type SyncModelsResult,
   type ValidationResult
 } from '../../shared/ipc'
 import { isApiKeyValueValid } from '../features/api-key/api-key-state'
@@ -30,6 +32,7 @@ export interface InstallerClient {
   openDesktopApp(): Promise<boolean>
   openDesktopAppInstall(): Promise<boolean>
   openProviderSite(): Promise<boolean>
+  syncModels(input: SyncModelsRequest): Promise<SyncModelsResult>
   resumeInstall(): Promise<InstallExecutionResult>
   retryTask(taskId: string): Promise<InstallExecutionResult>
   subscribeLogs(listener: (event: InstallLogEvent) => void): () => void
@@ -148,6 +151,15 @@ const browserInstallerClient: InstallerClient = {
     }
 
     return true
+  },
+
+  async syncModels(): Promise<SyncModelsResult> {
+    return {
+      ok: false,
+      count: 0,
+      path: '',
+      message: '预览模式无法更新模型（需在安装器桌面版中执行）。'
+    }
   },
 
   async resumeInstall() {
@@ -322,6 +334,8 @@ function getIpcRendererApi(): RendererInstallerApi | null {
         ipcRenderer.invoke(ipcChannels.openDesktopAppInstall) as Promise<boolean>,
       openProviderSite: () =>
         ipcRenderer.invoke(ipcChannels.openProviderSite) as Promise<boolean>,
+      syncModels: (input) =>
+        ipcRenderer.invoke(ipcChannels.syncModels, input) as Promise<SyncModelsResult>,
       resumeInstall: () =>
         ipcRenderer.invoke(ipcChannels.resumeInstall) as Promise<InstallExecutionResult>,
       retryTask: (taskId) =>

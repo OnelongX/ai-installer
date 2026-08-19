@@ -168,6 +168,7 @@ function registerInstallerIpc() {
     },
     mkdir: (targetPath) => fs.mkdir(targetPath, { recursive: true }),
     platform: process.platform,
+    readFile: (targetPath) => fs.readFile(targetPath, 'utf8'),
     rename: (from, to) => fs.rename(from, to),
     saveSession: (serialized) => fs.writeFile(sessionPath, serialized, 'utf8'),
     userProfile,
@@ -177,6 +178,7 @@ function registerInstallerIpc() {
   ipcMain.handle(ipcChannels.dismissRecoveryState, () => controller.dismissRecoveryState())
   ipcMain.handle(ipcChannels.exportDiagnostics, async () => controller.exportDiagnostics())
   ipcMain.handle(ipcChannels.generatePlan, (_event, input) => controller.generatePlan(input))
+  ipcMain.handle(ipcChannels.syncModels, (_event, input) => controller.syncModels(input))
   ipcMain.handle(ipcChannels.getExistingApiKey, () => controller.getExistingApiKey())
   ipcMain.handle(ipcChannels.getAppInfo, async () => ({
     title: appShellTitle,

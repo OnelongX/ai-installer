@@ -15,6 +15,8 @@ interface BuildSettingsJsonOptions {
   providerId?: ProviderId
   /** the LiveToken / SolaEon API key. Written as ANTHROPIC_AUTH_TOKEN (Bearer). */
   apiKey?: string
+  /** override the availableModels whitelist (default: curated base ids) */
+  availableModelIds?: string[]
 }
 
 interface EnsureSettingsJsonDeps {
@@ -39,7 +41,7 @@ interface EnsureSettingsJsonDeps {
 // third-party gateway's prefix-cache hit rate. Anthropic's own backend strips
 // it; gateways don't. Turning it off keeps caches hot.
 // Docs: https://code.claude.com/docs/en/llm-gateway
-function buildSettings(baseUrl: string, apiKey?: string) {
+function buildSettings(baseUrl: string, apiKey?: string, availableModelIds?: string[]) {
   const env: Record<string, string> = {
     ANTHROPIC_BASE_URL: baseUrl,
     ANTHROPIC_DEFAULT_OPUS_MODEL: TIER_DEFAULTS.opus,
@@ -57,7 +59,7 @@ function buildSettings(baseUrl: string, apiKey?: string) {
   return {
     env,
     model: DEFAULT_MODEL,
-    availableModels: baseModelIds(),
+    availableModels: availableModelIds ?? baseModelIds(),
     permissions: {
       defaultMode: 'acceptEdits'
     },
@@ -68,7 +70,35 @@ function buildSettings(baseUrl: string, apiKey?: string) {
 
 export function buildSettingsJson(options: BuildSettingsJsonOptions = {}) {
   const provider = options.provider ?? resolveProvider(options.providerId)
-  return `${JSON.stringify(buildSettings(provider.baseUrl, options.apiKey), null, 2)}\n`
+  return `${JSON.stringify(buildSettings(provider.baseUrl, options.apiKey, options.availableModelIds), null, 2)}\n`
+}
+
+/**
+ * Update an existing settings.json's `availableModels` in place, preserving
+ * everything else (auth token, env, permissions, user customisations). Used by
+ * the client-side model refresh so we never clobber the user's key. Falls back
+ * to a full rebuild only when the existing file can't be parsed.
+ */
+export function updateAvailableModels(
+  rawSettings: string,
+  modelIds: string[],
+  fallback: BuildSettingsJsonOptions = {}
+): string {
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(rawSettings) as Record<string, unknown>
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('not an object')
+    }
+  } catch {
+    return buildSettingsJson({ ...fallback, availableModelIds: modelIds })
+  }
+  parsed.availableModels = modelIds
+  // Keep the startup default valid — if it's no longer offered, fall back.
+  if (typeof parsed.model === 'string' && !modelIds.includes(parsed.model)) {
+    parsed.model = modelIds.includes(DEFAULT_MODEL) ? DEFAULT_MODEL : modelIds[0]
+  }
+  return `${JSON.stringify(parsed, null, 2)}\n`
 }
 
 export function getSettingsJsonPath(userProfile: string) {

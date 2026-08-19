@@ -1,3 +1,4 @@
+import type { GatewayModel } from '../../../shared/model-catalog'
 import { baseModelIds, type ResolvedProvider } from '../../../shared/provider-config'
 
 // Before writing any config we hit the gateway's /v1/models endpoint and make
@@ -23,7 +24,7 @@ interface FetchLike {
   }>
 }
 
-function extractModelIds(raw: string): string[] {
+function extractModels(raw: string): GatewayModel[] {
   try {
     const doc = JSON.parse(raw) as unknown
     const list = Array.isArray(doc)
@@ -32,12 +33,61 @@ function extractModelIds(raw: string): string[] {
         ? (doc as { data: unknown[] }).data
         : []
     return list
-      .map((entry) =>
-        entry && typeof entry === 'object' ? String((entry as { id?: unknown }).id ?? '') : ''
-      )
-      .filter((id) => id.length > 0)
+      .map((entry): GatewayModel => {
+        if (entry && typeof entry === 'object') {
+          const record = entry as { id?: unknown; display_name?: unknown; name?: unknown }
+          const id = String(record.id ?? '')
+          const label = String(record.display_name ?? record.name ?? id)
+          return { id, label }
+        }
+        return { id: '', label: '' }
+      })
+      .filter((model) => model.id.length > 0)
   } catch {
     return []
+  }
+}
+
+function extractModelIds(raw: string): string[] {
+  return extractModels(raw).map((model) => model.id)
+}
+
+interface FetchResult {
+  ok: boolean
+  status: number
+  text(): Promise<string>
+}
+
+/**
+ * Fetch the gateway's models (id + display label) for a client-side refresh.
+ * Returns [] on any failure (bad key, dead gateway, non-HTTPS) so the caller
+ * can report a friendly error and leave the existing catalog untouched.
+ */
+export async function fetchClaudeModels(
+  provider: ResolvedProvider,
+  apiKey: string,
+  fetchImpl: FetchLike = globalThis.fetch as unknown as FetchLike,
+  timeoutMs = 15_000
+): Promise<GatewayModel[]> {
+  if (!/^https:\/\//i.test(provider.baseUrl)) {
+    return []
+  }
+  const url = `${provider.baseUrl.replace(/\/$/, '')}/v1/models`
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response: FetchResult = await fetchImpl(url, {
+      headers: { Authorization: `Bearer ${apiKey}`, 'anthropic-version': '2023-06-01' },
+      signal: controller.signal
+    })
+    if (!response.ok) {
+      return []
+    }
+    return extractModels(await response.text())
+  } catch {
+    return []
+  } finally {
+    clearTimeout(timer)
   }
 }
 

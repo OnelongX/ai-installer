@@ -255,6 +255,7 @@ export default function App({ installerClient }: AppProps) {
           onOpenProviderSite={() => {
             void client.openProviderSite()
           }}
+          onSyncModels={(args) => client.syncModels(args)}
           onContinue={({ apiKeyMode, keyValue, provider: chosenProvider }) => {
             setProvider(chosenProvider)
             const continueWithEnvironment = async () => {

@@ -1,4 +1,4 @@
-import { claudeModels, type ResolvedProvider } from '../../../shared/provider-config'
+import { claudeModels, type ClaudeModel, type ResolvedProvider } from '../../../shared/provider-config'
 
 // Claude Desktop reads managed gateway config from HKCU\Software\Policies\Claude.
 // Writing these REG_SZ values makes the Desktop app's model picker list our
@@ -16,13 +16,14 @@ interface RegistryValue {
 }
 
 /** Compact JSON array string exactly as Claude Desktop expects in inferenceModels. */
-export function buildInferenceModelsJson() {
-  return JSON.stringify(claudeModels)
+export function buildInferenceModelsJson(models: ClaudeModel[] = claudeModels) {
+  return JSON.stringify(models)
 }
 
 export function buildRegistryValues(
   provider: ResolvedProvider,
-  apiKey: string
+  apiKey: string,
+  models: ClaudeModel[] = claudeModels
 ): RegistryValue[] {
   return [
     { name: 'inferenceProvider', value: 'gateway' },
@@ -30,7 +31,7 @@ export function buildRegistryValues(
     { name: 'inferenceGatewayAuthScheme', value: 'bearer' },
     { name: 'inferenceGatewayApiKey', value: apiKey },
     { name: 'modelDiscoveryEnabled', value: 'false' },
-    { name: 'inferenceModels', value: buildInferenceModelsJson() }
+    { name: 'inferenceModels', value: buildInferenceModelsJson(models) }
   ]
 }
 
@@ -43,8 +44,12 @@ function escapePsSingle(value: string) {
  * six REG_SZ values. Uses New-Item + Set-ItemProperty (not `reg add`) so the
  * JSON-string inferenceModels value survives without cmd.exe quote mangling.
  */
-export function buildWriteRegistryCommand(provider: ResolvedProvider, apiKey: string) {
-  const values = buildRegistryValues(provider, apiKey)
+export function buildWriteRegistryCommand(
+  provider: ResolvedProvider,
+  apiKey: string,
+  models: ClaudeModel[] = claudeModels
+) {
+  const values = buildRegistryValues(provider, apiKey, models)
   const lines = [
     `$key = '${CLAUDE_POLICY_KEY.replace('HKCU\\', 'HKCU:\\')}'`,
     "if (-not (Test-Path -LiteralPath $key)) { [void](New-Item -Path $key -Force) }"
@@ -54,10 +59,10 @@ export function buildWriteRegistryCommand(provider: ResolvedProvider, apiKey: st
       `Set-ItemProperty -LiteralPath $key -Name '${escapePsSingle(name)}' -Value '${escapePsSingle(value)}' -Type String`
     )
   }
-  // Post-write sanity check: inferenceModels must round-trip to a 7-item array.
+  // Post-write sanity check: inferenceModels must round-trip to the same count.
   lines.push(
     "$stored = Get-ItemPropertyValue -LiteralPath $key -Name 'inferenceModels'",
-    "if (-not $stored.TrimStart().StartsWith('[') -or @(($stored | ConvertFrom-Json)).Count -ne 7) { throw 'inferenceModels registry validation failed' }"
+    `if (-not $stored.TrimStart().StartsWith('[') -or @(($stored | ConvertFrom-Json)).Count -ne ${models.length}) { throw 'inferenceModels registry validation failed' }`
   )
   return lines.join('\n')
 }

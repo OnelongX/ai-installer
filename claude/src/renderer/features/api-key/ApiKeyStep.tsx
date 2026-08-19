@@ -22,6 +22,14 @@ interface ApiKeyStepProps {
     provider: ProviderId
   }) => void
   onOpenProviderSite?: () => void
+  onSyncModels?: (args: { apiKey: string; provider: ProviderId }) => Promise<{
+    ok: boolean
+    count: number
+    gatewayCount?: number
+    registryOk?: boolean
+    path: string
+    message?: string
+  }>
 }
 
 const panelStyle = {
@@ -61,12 +69,37 @@ export function ApiKeyStep({
   existingKeyMask,
   canReuseExistingKey = false,
   onContinue,
-  onOpenProviderSite
+  onOpenProviderSite,
+  onSyncModels
 }: ApiKeyStepProps) {
   const [mode, setMode] = useState<ApiKeySelectionMode>(null)
   const [showValue, setShowValue] = useState(false)
   const [value, setValue] = useState('')
   const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER)
+  const [syncing, setSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<string | null>(null)
+
+  const syncModels = () => {
+    const key = value.trim()
+    if (!onSyncModels || !key) {
+      return
+    }
+    setSyncing(true)
+    setSyncStatus(null)
+    void onSyncModels({ apiKey: key, provider })
+      .then((result) => {
+        if (!result.ok) {
+          setSyncStatus(`✗ ${result.message ?? '更新失败'}`)
+          return
+        }
+        const warn = result.registryOk === false ? `（${result.message}）` : ''
+        setSyncStatus(
+          `✓ 已更新模型：共 ${result.count} 个（网关 ${result.gatewayCount ?? 0}）。重开 Claude 生效。${warn}`
+        )
+      })
+      .catch(() => setSyncStatus('✗ 更新失败，请重试。'))
+      .finally(() => setSyncing(false))
+  }
 
   const state: ApiKeyViewState = {
     existingKeyMask,
@@ -181,8 +214,41 @@ export function ApiKeyStep({
               ))}
             </div>
             <p style={{ margin: 0, color: 'rgba(148, 163, 184, 0.85)', fontSize: '0.8rem' }}>
-              会同时配置 Claude Code CLI 和 Claude Desktop（7 个模型 + 3 个 1M 变体）。
+              会同时配置 Claude Code CLI 和 Claude Desktop。
             </p>
+            {onSyncModels ? (
+              <div style={{ display: 'grid', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={syncModels}
+                  disabled={syncing || !value.trim()}
+                  title="从网关拉取最新模型并写入 settings.json + Desktop 注册表，无需重装"
+                  style={{
+                    justifySelf: 'start',
+                    border: '1px solid rgba(52, 211, 153, 0.5)',
+                    background: 'transparent',
+                    color: value.trim() ? '#34d399' : 'rgba(148, 163, 184, 0.55)',
+                    borderRadius: '999px',
+                    padding: '6px 16px',
+                    fontSize: '0.8rem',
+                    cursor: value.trim() ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  {syncing ? '更新中…' : '⬇ 更新模型列表（客户端）'}
+                </button>
+                {syncStatus ? (
+                  <p
+                    style={{
+                      margin: 0,
+                      color: syncStatus.startsWith('✓') ? '#34d399' : '#f87171',
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    {syncStatus}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <label

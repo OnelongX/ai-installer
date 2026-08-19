@@ -29,6 +29,7 @@ interface InstallSessionControllerDeps {
   loadSession(): Promise<string | null>
   mkdir(path: string): Promise<void>
   platform: string
+  readFile(path: string): Promise<string>
   rename(from: string, to: string): Promise<void>
   saveSession(serialized: string): Promise<void>
   userProfile: string
@@ -59,6 +60,7 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
     exec: deps.exec,
     fileExists: deps.fileExists,
     mkdir: deps.mkdir,
+    readFile: deps.readFile,
     rename: deps.rename,
     userProfile: deps.userProfile,
     writeFile: deps.writeFile
@@ -159,6 +161,7 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
         await persistState()
         emitLog?.(event)
       },
+      readFile: deps.readFile,
       rename: deps.rename,
       userProfile: deps.userProfile,
       writeFile: deps.writeFile
@@ -226,6 +229,10 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
 
     getExistingApiKey() {
       return sharedService.getExistingApiKey()
+    },
+
+    syncModels(input: Parameters<typeof sharedService.syncModels>[0]) {
+      return sharedService.syncModels(input)
     },
 
     async getRecoveryState(): Promise<RecoveryStateData> {

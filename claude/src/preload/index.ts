@@ -11,6 +11,7 @@ const api: RendererInstallerApi = {
   openDesktopApp: () => ipcRenderer.invoke(ipcChannels.openDesktopApp),
   openDesktopAppInstall: () => ipcRenderer.invoke(ipcChannels.openDesktopAppInstall),
   openProviderSite: () => ipcRenderer.invoke(ipcChannels.openProviderSite),
+  syncModels: (input) => ipcRenderer.invoke(ipcChannels.syncModels, input),
   validateApiKey: (input) => ipcRenderer.invoke(ipcChannels.validateApiKey, input),
   generatePlan: (input) => ipcRenderer.invoke(ipcChannels.generatePlan, input),
   getExistingApiKey: () => ipcRenderer.invoke(ipcChannels.getExistingApiKey),
