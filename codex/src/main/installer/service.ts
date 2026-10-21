@@ -24,9 +24,10 @@ import { buildPersistApiKeyCommand } from './tasks/persist-api-key.windows'
 import {
   buildConfigToml,
   ensureConfigToml,
+  getConfigBackupPath,
   getConfigTomlPath,
   getModelCatalogPath,
-  mergeDesktopSettings
+  mergeInstallerConfig
 } from './tasks/write-config.windows'
 
 type ExecResult = {
@@ -419,10 +420,22 @@ export function createInstallerService(deps: InstallerServiceDeps) {
                 type: 'task-output'
               })
               await deps.mkdir(path.dirname(configPath))
+              // Merge rather than overwrite: keep mcp_servers / plugins / projects /
+              // desktop prefs, and back up the previous file first.
               const existingConfig = (await deps.readFile?.(configPath)) ?? null
+              if (existingConfig?.trim()) {
+                const backupPath = getConfigBackupPath(configPath)
+                await deps.writeFile(backupPath, existingConfig)
+                await emitLog({
+                  level: 'info',
+                  message: `已备份原配置 → ${backupPath}`,
+                  taskId: task,
+                  type: 'task-output'
+                })
+              }
               await deps.writeFile(
                 configPath,
-                mergeDesktopSettings(
+                mergeInstallerConfig(
                   buildConfigToml({ provider: resolvedProvider, model: input.model, catalogPath }),
                   existingConfig
                 )

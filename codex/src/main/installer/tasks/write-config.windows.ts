@@ -8,6 +8,7 @@ import {
   type ProviderId,
   type ResolvedProvider
 } from '../../../shared/provider-config'
+import { mergeConfigToml } from './merge-config'
 
 interface BuildConfigTomlOptions {
   /** Fully-resolved provider (base_url, name, env_key). Wins over provider/networkMode. */
@@ -30,8 +31,7 @@ interface EnsureConfigTomlDeps {
 }
 
 const DESKTOP_DETAIL_MODE_LINE = 'conversationDetailMode = "STEPS_COMMANDS"'
-const TABLE_HEADER = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$/
-const DETAIL_MODE_KEY = /^\s*"?conversationDetailMode"?\s*=/
+const INSTALLER_PROVIDER_TABLE = 'model_providers.cm'
 
 function renderConfigToml(provider: ResolvedProvider, model: string, catalogPath?: string) {
   return [
@@ -64,7 +64,7 @@ function renderConfigToml(provider: ResolvedProvider, model: string, catalogPath
     'approvals_reviewer = "user"',
     'service_tier = "fast"',
     '',
-    '[model_providers.cm]',
+    `[${INSTALLER_PROVIDER_TABLE}]`,
     'approval_policy = "on-request"',
     'sandbox_mode = "workspace-write"',
     'web_search = "live"',
@@ -81,52 +81,16 @@ function renderConfigToml(provider: ResolvedProvider, model: string, catalogPath
 }
 
 /**
- * Carry the user's existing desktop settings (keys under `[desktop]` and any
- * `[desktop.*]` sub-tables) into a freshly rendered config, so a reinstall
- * doesn't wipe them. conversationDetailMode is always forced to STEPS_COMMANDS.
+ * Merge a freshly rendered config into the user's existing config.toml so a
+ * reinstall only touches installer-owned keys: mcp_servers, plugins, projects,
+ * other [desktop] keys etc. survive. [model_providers.cm] is owned outright.
  */
-export function mergeDesktopSettings(rendered: string, existing: string | null | undefined) {
-  if (!existing) {
-    return rendered
-  }
+export function mergeInstallerConfig(rendered: string, existing: string | null | undefined) {
+  return mergeConfigToml(rendered, existing, { replaceTables: [INSTALLER_PROVIDER_TABLE] })
+}
 
-  const desktopKeys: string[] = []
-  const subTables: string[] = []
-  let table = ''
-
-  for (const line of existing.split(/\r?\n/)) {
-    const header = TABLE_HEADER.exec(line)
-    if (header) {
-      table = header[1]
-      if (table.startsWith('desktop.')) {
-        subTables.push('', line)
-      }
-      continue
-    }
-    if (table === 'desktop') {
-      if (line.trim() && !DETAIL_MODE_KEY.test(line)) {
-        desktopKeys.push(line)
-      }
-    } else if (table.startsWith('desktop.') && line.trim()) {
-      subTables.push(line)
-    }
-  }
-
-  if (!desktopKeys.length && !subTables.length) {
-    return rendered
-  }
-
-  const desktopHeader = rendered.indexOf('\n[desktop]\n')
-  const base = rendered.slice(0, desktopHeader)
-  return [
-    base,
-    '[desktop]',
-    ...desktopKeys,
-    DESKTOP_DETAIL_MODE_LINE,
-    ...subTables.map((line) => line.trimEnd())
-  ]
-    .join('\n')
-    .replace(/\n+$/, '')
+export function getConfigBackupPath(configPath: string, now = new Date()) {
+  return `${configPath}.bak-installer-${now.toISOString().replace(/[:.]/g, '-')}`
 }
 
 export function buildConfigToml(options: BuildConfigTomlOptions = {}) {

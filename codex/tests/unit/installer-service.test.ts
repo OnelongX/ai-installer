@@ -70,7 +70,7 @@ describe('installer service', () => {
     expect(logMessages.some((entry) => entry.endsWith('verify-codex-runtime'))).toBe(true)
   })
 
-  it('write-config keeps the existing [desktop] settings and forces STEPS_COMMANDS', async () => {
+  it('write-config backs up, keeps existing [desktop] settings and forces STEPS_COMMANDS', async () => {
     const writes: Array<{ path: string; value: string }> = []
     const service = createInstallerService({
       exec: async () => ({ exitCode: 0, stderr: '', stdout: '' }),
@@ -96,9 +96,15 @@ describe('installer service', () => {
 
     const config = writes.find((entry) => entry.path.endsWith('config.toml'))?.value ?? ''
     expect(config).toContain(
-      '[desktop]\nfollowUpQueueMode = "queue"\nconversationDetailMode = "STEPS_COMMANDS"'
+      '[desktop]\nconversationDetailMode = "STEPS_COMMANDS"\nfollowUpQueueMode = "queue"'
     )
     expect(config).not.toContain('STEPS_PROSE')
+
+    // The previous file is backed up before it is rewritten.
+    const backupIndex = writes.findIndex((entry) => entry.path.includes('config.toml.bak-installer-'))
+    expect(backupIndex).toBeGreaterThanOrEqual(0)
+    expect(writes[backupIndex].value).toContain('STEPS_PROSE')
+    expect(backupIndex).toBeLessThan(writes.findIndex((entry) => entry.path.endsWith('config.toml')))
   })
 
   it('syncModels refuses without a key (no env, no input) and does not write', async () => {
