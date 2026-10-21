@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildConfigToml,
   ensureConfigToml,
-  getConfigTomlPath
+  getConfigTomlPath,
+  mergeDesktopSettings
 } from '../../src/main/installer/tasks/write-config.windows'
 
 const expectedConfigToml = [
@@ -37,7 +38,10 @@ const expectedConfigToml = [
   'name = "LiveToken"',
   'base_url = "https://livetoken.top/v1"',
   'wire_api = "responses"',
-  'env_key = "OPENAI_API_KEY"'
+  'env_key = "OPENAI_API_KEY"',
+  '',
+  '[desktop]',
+  'conversationDetailMode = "STEPS_COMMANDS"'
 ].join('\n')
 
 const solaeonInternalConfig = expectedConfigToml
@@ -105,6 +109,60 @@ describe('windows config generation', () => {
     expect(
       buildConfigToml({ providerId: 'solaeon', networkMode: 'auto', internalReachable: false })
     ).toBe(solaeonExternalConfig)
+  })
+
+  it('pins the desktop detail mode to STEPS_COMMANDS', () => {
+    expect(buildConfigToml()).toMatch(
+      /\n\[desktop\]\nconversationDetailMode = "STEPS_COMMANDS"$/
+    )
+  })
+
+  it('leaves the rendered config unchanged when there is no existing desktop section', () => {
+    const rendered = buildConfigToml()
+    expect(mergeDesktopSettings(rendered, null)).toBe(rendered)
+    expect(mergeDesktopSettings(rendered, 'model = "x"\n[windows]\nsandbox = "elevated"\n')).toBe(
+      rendered
+    )
+  })
+
+  it('keeps existing [desktop] keys and sub-tables but forces STEPS_COMMANDS', () => {
+    const existing = [
+      'model = "old"',
+      '',
+      '[desktop]',
+      'keepRemoteControlAwakeWhilePluggedIn = true',
+      'conversationDetailMode = "STEPS_PROSE"',
+      'followUpQueueMode = "queue"',
+      '',
+      '[desktop.open-in-target-preferences]',
+      'global = "fileManager"',
+      '',
+      '[desktop.open-in-target-preferences.perPath]',
+      '"E:\\\\gateway" = "vscode"',
+      '',
+      '[features]',
+      'js_repl = false'
+    ].join('\r\n')
+
+    const merged = mergeDesktopSettings(buildConfigToml(), existing)
+
+    expect(merged.startsWith(expectedConfigToml.split('\n[desktop]')[0])).toBe(true)
+    expect(merged.split('\n[desktop]\n')[1]).toBe(
+      [
+        'keepRemoteControlAwakeWhilePluggedIn = true',
+        'followUpQueueMode = "queue"',
+        'conversationDetailMode = "STEPS_COMMANDS"',
+        '',
+        '[desktop.open-in-target-preferences]',
+        'global = "fileManager"',
+        '',
+        '[desktop.open-in-target-preferences.perPath]',
+        '"E:\\\\gateway" = "vscode"'
+      ].join('\n')
+    )
+    expect(merged).not.toContain('STEPS_PROSE')
+    expect(merged).not.toContain('js_repl')
+    expect(merged.match(/^\[desktop\]$/gm)).toHaveLength(1)
   })
 
   it('creates the default config file when it is missing', async () => {

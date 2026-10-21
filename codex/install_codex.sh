@@ -136,10 +136,25 @@ home_dir="${HOME:-/}"
 conf_dir="$home_dir/.codex"
 conf="$conf_dir/config.toml"
 mkdir -p "$conf_dir"
+# Keep the user's existing [desktop] keys and [desktop.*] sub-tables across a
+# reinstall; conversationDetailMode is always forced below.
+desktop_awk='
+/^[[:space:]]*\[/ {
+  t = $0; sub(/^[[:space:]]*\[+[[:space:]]*/, "", t); sub(/[[:space:]]*\].*$/, "", t)
+  if (mode == "sub" && t ~ /^desktop\./) { print ""; print }
+  next
+}
+mode == "keys" && t == "desktop" && NF && $0 !~ /^[[:space:]]*"?conversationDetailMode"?[[:space:]]*=/ { print }
+mode == "sub" && t ~ /^desktop\./ { print }
+'
+desktop_keys=""
+desktop_subtables=""
 if [[ -f "$conf" ]]; then
   stamp="$(date +%Y%m%d-%H%M%S)"
   cp "$conf" "$conf.bak.$stamp"
   ok "已备份 → $conf.bak.$stamp"
+  desktop_keys="$(awk -v mode=keys "$desktop_awk" "$conf")"
+  desktop_subtables="$(awk -v mode=sub "$desktop_awk" "$conf")"
 fi
 
 cat > "$conf" <<TOML
@@ -172,7 +187,15 @@ name = "LiveToken"
 base_url = "$BASE_URL"
 wire_api = "responses"
 env_key = "OPENAI_API_KEY"
+
+# Codex desktop's Work mode / STEPS_PROSE needs a ChatGPT login and blocks api-key users.
+[desktop]
+${desktop_keys:+$desktop_keys
+}conversationDetailMode = "STEPS_COMMANDS"
 TOML
+if [[ -n "$desktop_subtables" ]]; then
+  printf '%s\n' "$desktop_subtables" >> "$conf"
+fi
 ok "已写入 $conf"
 
 # 5. shell rc

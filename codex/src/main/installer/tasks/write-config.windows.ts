@@ -29,6 +29,10 @@ interface EnsureConfigTomlDeps {
   writeFile(path: string, value: string): Promise<void>
 }
 
+const DESKTOP_DETAIL_MODE_LINE = 'conversationDetailMode = "STEPS_COMMANDS"'
+const TABLE_HEADER = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$/
+const DETAIL_MODE_KEY = /^\s*"?conversationDetailMode"?\s*=/
+
 function renderConfigToml(provider: ResolvedProvider, model: string, catalogPath?: string) {
   return [
     'personality = "pragmatic"',
@@ -67,8 +71,62 @@ function renderConfigToml(provider: ResolvedProvider, model: string, catalogPath
     `name = "${provider.name}"`,
     `base_url = "${provider.baseUrl}"`,
     'wire_api = "responses"',
-    `env_key = "${provider.envKey}"`
+    `env_key = "${provider.envKey}"`,
+    '',
+    '[desktop]',
+    // Codex desktop's STEPS_PROSE / Work mode requires a signed-in ChatGPT
+    // account and blocks sends for api-key users; pin the commands view.
+    DESKTOP_DETAIL_MODE_LINE
   ].join('\n')
+}
+
+/**
+ * Carry the user's existing desktop settings (keys under `[desktop]` and any
+ * `[desktop.*]` sub-tables) into a freshly rendered config, so a reinstall
+ * doesn't wipe them. conversationDetailMode is always forced to STEPS_COMMANDS.
+ */
+export function mergeDesktopSettings(rendered: string, existing: string | null | undefined) {
+  if (!existing) {
+    return rendered
+  }
+
+  const desktopKeys: string[] = []
+  const subTables: string[] = []
+  let table = ''
+
+  for (const line of existing.split(/\r?\n/)) {
+    const header = TABLE_HEADER.exec(line)
+    if (header) {
+      table = header[1]
+      if (table.startsWith('desktop.')) {
+        subTables.push('', line)
+      }
+      continue
+    }
+    if (table === 'desktop') {
+      if (line.trim() && !DETAIL_MODE_KEY.test(line)) {
+        desktopKeys.push(line)
+      }
+    } else if (table.startsWith('desktop.') && line.trim()) {
+      subTables.push(line)
+    }
+  }
+
+  if (!desktopKeys.length && !subTables.length) {
+    return rendered
+  }
+
+  const desktopHeader = rendered.indexOf('\n[desktop]\n')
+  const base = rendered.slice(0, desktopHeader)
+  return [
+    base,
+    '[desktop]',
+    ...desktopKeys,
+    DESKTOP_DETAIL_MODE_LINE,
+    ...subTables.map((line) => line.trimEnd())
+  ]
+    .join('\n')
+    .replace(/\n+$/, '')
 }
 
 export function buildConfigToml(options: BuildConfigTomlOptions = {}) {

@@ -159,6 +159,22 @@ export function CompleteView({
         >
           <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{desktopApp.displayName}</h2>
           <p style={{ margin: 0, color: '#cbd5e1' }}>{desktopApp.statusMessage}</p>
+          <p
+            role="note"
+            style={{
+              margin: 0,
+              borderRadius: '14px',
+              border: '1px solid rgba(250, 204, 21, 0.35)',
+              background: 'rgba(250, 204, 21, 0.08)',
+              padding: '12px 14px',
+              color: '#fde68a',
+              lineHeight: 1.6
+            }}
+          >
+            提示：Codex 桌面版的「Work 模式」需要登录 ChatGPT 官方账号，使用 API Key
+            时会提示 “Work browser access requires an authenticated account” 并拦截发送。
+            请在新建对话的输入框处切换到代码 / 项目模式再使用。
+          </p>
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
             <button
               type="button"

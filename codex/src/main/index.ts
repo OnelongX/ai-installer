@@ -168,6 +168,13 @@ function registerInstallerIpc() {
     },
     mkdir: (targetPath) => fs.mkdir(targetPath, { recursive: true }),
     platform: process.platform,
+    readFile: async (targetPath) => {
+      try {
+        return await fs.readFile(targetPath, 'utf8')
+      } catch {
+        return null
+      }
+    },
     saveSession: (serialized) => fs.writeFile(sessionPath, serialized, 'utf8'),
     userProfile,
     writeFile: (targetPath, value) => fs.writeFile(targetPath, value, 'utf8')

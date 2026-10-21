@@ -70,6 +70,37 @@ describe('installer service', () => {
     expect(logMessages.some((entry) => entry.endsWith('verify-codex-runtime'))).toBe(true)
   })
 
+  it('write-config keeps the existing [desktop] settings and forces STEPS_COMMANDS', async () => {
+    const writes: Array<{ path: string; value: string }> = []
+    const service = createInstallerService({
+      exec: async () => ({ exitCode: 0, stderr: '', stdout: '' }),
+      fileExists: async () => true,
+      mkdir: async () => {},
+      readFile: async (path) =>
+        path.endsWith('config.toml')
+          ? '[desktop]\nfollowUpQueueMode = "queue"\nconversationDetailMode = "STEPS_PROSE"\n'
+          : null,
+      userProfile: 'C:\\Users\\Administrator',
+      writeFile: async (path, value) => {
+        writes.push({ path, value })
+      }
+    })
+
+    await service.startInstall({
+      apiKey: 'sk-test-key',
+      plan: {
+        summary: 'Install Codex on this machine',
+        tasks: ['write-config']
+      }
+    })
+
+    const config = writes.find((entry) => entry.path.endsWith('config.toml'))?.value ?? ''
+    expect(config).toContain(
+      '[desktop]\nfollowUpQueueMode = "queue"\nconversationDetailMode = "STEPS_COMMANDS"'
+    )
+    expect(config).not.toContain('STEPS_PROSE')
+  })
+
   it('syncModels refuses without a key (no env, no input) and does not write', async () => {
     const prev = process.env.OPENAI_API_KEY
     delete process.env.OPENAI_API_KEY

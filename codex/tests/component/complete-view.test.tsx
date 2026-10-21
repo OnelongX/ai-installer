@@ -82,6 +82,30 @@ describe('complete view', () => {
     expect(onInstallDesktopApp).toHaveBeenCalledTimes(1)
   })
 
+  it('warns api-key users to switch out of Work mode in the desktop app', () => {
+    render(
+      <CompleteView
+        desktopApp={{
+          displayName: 'Codex 桌面版',
+          installed: true,
+          statusMessage: '已检测到 Codex 桌面版'
+        }}
+        onInstallDesktopApp={() => {}}
+        onOpenDesktopApp={() => {}}
+        summary={{
+          codexVersion: '0.1.0',
+          configPath: 'C:\\Users\\Administrator\\.codex\\config.toml',
+          keyMask: 'sk-***1234',
+          status: 'ready'
+        }}
+      />
+    )
+
+    const note = screen.getByRole('note')
+    expect(note).toHaveTextContent('Work 模式')
+    expect(note).toHaveTextContent('Work browser access requires an authenticated account')
+  })
+
   it('introduces LiveToken and exposes a console CTA', () => {
     const onOpenProviderSite = vi.fn()
 

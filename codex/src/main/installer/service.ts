@@ -25,7 +25,8 @@ import {
   buildConfigToml,
   ensureConfigToml,
   getConfigTomlPath,
-  getModelCatalogPath
+  getModelCatalogPath,
+  mergeDesktopSettings
 } from './tasks/write-config.windows'
 
 type ExecResult = {
@@ -43,6 +44,8 @@ interface InstallerServiceDeps {
   fileExists(path: string): Promise<boolean>
   mkdir(path: string): Promise<void>
   onLog?(event: InstallLogEvent): Promise<void> | void
+  /** Returns null when the file is missing; used to keep existing [desktop] settings. */
+  readFile?(path: string): Promise<string | null>
   userProfile: string
   writeFile(path: string, value: string): Promise<void>
 }
@@ -416,9 +419,13 @@ export function createInstallerService(deps: InstallerServiceDeps) {
                 type: 'task-output'
               })
               await deps.mkdir(path.dirname(configPath))
+              const existingConfig = (await deps.readFile?.(configPath)) ?? null
               await deps.writeFile(
                 configPath,
-                buildConfigToml({ provider: resolvedProvider, model: input.model, catalogPath })
+                mergeDesktopSettings(
+                  buildConfigToml({ provider: resolvedProvider, model: input.model, catalogPath }),
+                  existingConfig
+                )
               )
 
               // Generate the model catalog so Codex's /model picker lists every
