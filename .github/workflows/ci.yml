@@ -30,6 +30,10 @@ jobs:
       - name: Install deps
         run: npm install --no-audit --no-fund
 
+      # --if-present: an app without a typecheck script yet is skipped, not failed.
+      - name: Type check
+        run: npm run typecheck --if-present
+
       - name: Unit + component tests
         run: npx vitest run tests/unit tests/component
 

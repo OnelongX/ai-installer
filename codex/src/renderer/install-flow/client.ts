@@ -371,8 +371,9 @@ function getIpcRendererApi(): RendererInstallerApi | null {
       startInstall: (input) =>
         ipcRenderer.invoke(ipcChannels.startInstall, input) as Promise<InstallExecutionResult>,
       subscribeLogs: (listener) => {
-        const wrappedListener = (_event: unknown, event: Parameters<typeof listener>[0]) => {
-          listener(event)
+        const wrappedListener = (...args: unknown[]) => {
+          // ipcRenderer passes (event, payload); the payload is our log event.
+          listener(args[1] as Parameters<typeof listener>[0])
         }
 
         ipcRenderer.on(ipcChannels.subscribeLogs, wrappedListener)

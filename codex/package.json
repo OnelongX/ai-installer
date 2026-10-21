@@ -15,6 +15,7 @@
     "preview": "electron-vite preview",
     "smoke:packaged": "node scripts/smoke-packaged.mjs",
     "test": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:e2e": "playwright test"
   },
   "build": {

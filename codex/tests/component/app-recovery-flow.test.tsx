@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../../src/renderer/App'
+import { createTestInstallerClient } from './helpers/installer-client'
 
 describe('app recovery flow', () => {
   afterEach(() => {
@@ -19,7 +20,7 @@ describe('app recovery flow', () => {
 
     render(
       <App
-        installerClient={{
+        installerClient={createTestInstallerClient({
           dismissRecoveryState: async () => {},
           exportDiagnostics: async () =>
             ['# Codex 安装器诊断报告', '', '日志：', '- network timed out'].join('\n'),
@@ -74,7 +75,7 @@ describe('app recovery flow', () => {
           }),
           subscribeLogs: () => () => {},
           validateApiKey: async () => ({ ok: true })
-        }}
+        })}
       />
     )
 

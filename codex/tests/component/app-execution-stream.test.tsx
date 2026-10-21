@@ -1,8 +1,9 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { InstallLogEvent } from '../../src/shared/ipc'
+import type { InstallExecutionResult, InstallLogEvent } from '../../src/shared/ipc'
 import App from '../../src/renderer/App'
+import { createTestInstallerClient } from './helpers/installer-client'
 
 describe('app execution stream', () => {
   afterEach(() => {
@@ -10,11 +11,11 @@ describe('app execution stream', () => {
   })
 
   it('shows streamed install logs before completion', async () => {
-    let resolveInstall: ((value: Awaited<ReturnType<NonNullable<typeof client.startInstall>>>) => void) | null =
-      null
+    // Assigned inside callbacks, so declare via `as` to stop TS narrowing to null.
+    let resolveInstall = null as ((value: InstallExecutionResult) => void) | null
     let logListener: ((event: InstallLogEvent) => void) | null = null
 
-    const client = {
+    const client = createTestInstallerClient({
       dismissRecoveryState: async () => {},
       exportDiagnostics: async () => '',
       getExistingApiKey: async () => ({ exists: false as const }),
@@ -61,7 +62,7 @@ describe('app execution stream', () => {
         status: 'failed' as const
       }),
       startInstall: () =>
-        new Promise((resolve) => {
+        new Promise<InstallExecutionResult>((resolve) => {
           logListener?.({
             level: 'info',
             message: 'Starting install-codex',
@@ -84,7 +85,7 @@ describe('app execution stream', () => {
         }
       },
       validateApiKey: async () => ({ ok: true })
-    }
+    })
 
     render(<App installerClient={client} />)
 

@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import App from '../../src/renderer/App'
+import { createTestInstallerClient } from './helpers/installer-client'
 
 describe('app failure flow', () => {
   afterEach(() => {
@@ -11,7 +12,7 @@ describe('app failure flow', () => {
   it('stays on the execution screen with recovery guidance when installation fails', async () => {
     render(
       <App
-        installerClient={{
+        installerClient={createTestInstallerClient({
           dismissRecoveryState: async () => {},
           exportDiagnostics: async () => '',
       getExistingApiKey: async () => ({ exists: false as const }),
@@ -67,7 +68,7 @@ describe('app failure flow', () => {
             status: 'failed'
           }),
           validateApiKey: async () => ({ ok: true })
-        }}
+        })}
       />
     )
 

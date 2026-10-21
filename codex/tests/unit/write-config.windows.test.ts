@@ -196,7 +196,7 @@ describe('windows config generation', () => {
 
   it('creates the default config file when it is missing', async () => {
     const mkdir = vi.fn(async () => {})
-    const writeFile = vi.fn(async () => {})
+    const writeFile = vi.fn(async (_path: string, _value: string) => {})
     const userProfile = 'C:\\Users\\Administrator'
 
     const result = await ensureConfigToml({

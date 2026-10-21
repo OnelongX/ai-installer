@@ -16,7 +16,7 @@ describe('app flow', () => {
     fireEvent.change(screen.getByLabelText('API Key'), {
       target: { value: 'sk-test-key' }
     })
-    fireEvent.click(screen.getByRole('button', { name: '继续', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: '继续' }))
 
     expect(await screen.findByText('环境检测')).toBeInTheDocument()
 
@@ -32,7 +32,7 @@ describe('app flow', () => {
     fireEvent.change(screen.getByLabelText('API Key'), {
       target: { value: 'sk-test-key' }
     })
-    fireEvent.click(screen.getByRole('button', { name: '继续', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: '继续' }))
     expect(await screen.findByText('环境检测')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '继续到安装计划' }))
     fireEvent.click(screen.getByRole('button', { name: '开始安装' }))
@@ -50,7 +50,7 @@ describe('app flow', () => {
     render(<App installerClient={client} />)
 
     fireEvent.click(await screen.findByRole('button', { name: /sk-\*\*\*1234/i }))
-    fireEvent.click(screen.getByRole('button', { name: '继续', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: '继续' }))
 
     expect(await screen.findByText('环境检测')).toBeInTheDocument()
   })

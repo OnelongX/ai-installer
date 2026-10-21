@@ -63,8 +63,7 @@ describe('installer service', () => {
       }
     })
 
-    expect(result.status).toBe('ready')
-    expect(result.codexVersion).toBe('0.1.0')
+    expect(result).toMatchObject({ status: 'ready', codexVersion: '0.1.0' })
     expect(writes[0]?.path).toContain('.codex\\config.toml')
     expect(logMessages.some((entry) => entry.startsWith('task-start:'))).toBe(true)
     expect(logMessages.some((entry) => entry.endsWith('verify-codex-runtime'))).toBe(true)
@@ -220,7 +219,6 @@ describe('installer service', () => {
       }
     })
 
-    expect(result.status).toBe('ready')
-    expect(result.codexVersion).toBe('codex-cli 0.121.0')
+    expect(result).toMatchObject({ status: 'ready', codexVersion: 'codex-cli 0.121.0' })
   })
 })

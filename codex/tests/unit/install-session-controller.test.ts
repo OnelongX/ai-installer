@@ -58,8 +58,7 @@ describe('install session controller', () => {
 
     const secondRun = await controller.retryTask('verify-codex-runtime')
 
-    expect(secondRun.status).toBe('ready')
-    expect(secondRun.codexVersion).toBe('0.1.0')
+    expect(secondRun).toMatchObject({ status: 'ready', codexVersion: '0.1.0' })
 
     const report = await controller.exportDiagnostics()
     expect(report).toContain('network timed out')
@@ -134,13 +133,12 @@ describe('install session controller', () => {
 
     const resumed = await secondController.resumeInstall()
 
-    expect(resumed.status).toBe('ready')
-    expect(resumed.codexVersion).toBe('0.2.0')
+    expect(resumed).toMatchObject({ status: 'ready', codexVersion: '0.2.0' })
     expect(storedSession).toBeNull()
   })
 
   it('discards persisted sessions from an older installer version', async () => {
-    let storedSession =
+    let storedSession: string | null =
       '{"appVersion":"0.1.1","completedTasks":["write-config"],"logs":["旧版本日志"],"request":{"apiKey":"sk-test-key","plan":{"summary":"Install Codex on this machine","tasks":["write-config","verify-codex-runtime"]}},"summary":"旧版本会话"}'
 
     const controller = createInstallSessionController({

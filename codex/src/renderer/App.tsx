@@ -470,7 +470,7 @@ export default function App({ installerClient }: AppProps) {
         category: result.issue.category,
         likelyCause: result.issue.likelyCause,
         message: result.issue.message,
-        userAction: result.issue.userAction
+        userAction: result.issue.userAction ?? '请重试安装流程。'
       })
       setScreen('execution')
       setRepairAction(null)

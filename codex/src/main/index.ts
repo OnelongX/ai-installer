@@ -166,7 +166,9 @@ function registerInstallerIpc() {
         return null
       }
     },
-    mkdir: (targetPath) => fs.mkdir(targetPath, { recursive: true }),
+    mkdir: async (targetPath) => {
+      await fs.mkdir(targetPath, { recursive: true })
+    },
     platform: process.platform,
     readFile: async (targetPath) => {
       try {
@@ -252,7 +254,9 @@ async function ensureDefaultInstallerConfig() {
         return false
       }
     },
-    mkdir: (targetPath) => fs.mkdir(targetPath, { recursive: true }),
+    mkdir: async (targetPath) => {
+      await fs.mkdir(targetPath, { recursive: true })
+    },
     userProfile,
     writeFile: (targetPath, value) => fs.writeFile(targetPath, value, 'utf8')
   })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runTasks, TaskRunError } from '../../src/main/installer/task-runner'
+import { runTasks } from '../../src/main/installer/task-runner'
 
 describe('task runner', () => {
   it('runs tasks in dependency order', async () => {
@@ -35,7 +35,7 @@ describe('task runner', () => {
           verify: async () => false
         }
       ])
-    ).rejects.toMatchObject<TaskRunError>({
+    ).rejects.toMatchObject({
       failedTaskId: 'broken',
       events: [{ taskId: 'broken', status: 'failed' }]
     })
