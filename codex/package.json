@@ -1,6 +1,6 @@
 {
   "name": "codex-installer",
-  "version": "0.1.9",
+  "version": "0.1.27",
   "description": "用于安装、恢复和验证 Codex 的桌面安装中心。",
   "author": "OpenAI",
   "private": true,
