@@ -3,6 +3,7 @@ import path from 'node:path'
 import { DEFAULT_MODEL } from '../../../shared/models'
 import { buildModelCatalog } from '../../../shared/model-catalog'
 import {
+  DEFAULT_PROVIDER,
   resolveProvider,
   type NetworkMode,
   type ProviderId,
@@ -44,7 +45,7 @@ function renderConfigToml(provider: ResolvedProvider, model: string, catalogPath
     ...(catalogPath ? [`model_catalog_json = '${catalogPath}'`] : []),
     // Force API-key auth for the custom provider. Without these Codex falls back
     // to ChatGPT login and never uses env_key (per DeepSeek's Codex doc). Needed
-    // for any api-key gateway (SolaEon / LiveToken / DeepSeek passthrough).
+    // for any api-key gateway (SolaEon / DeepSeek passthrough).
     'preferred_auth_method = "apikey"',
     'forced_login_method = "api"',
     `review_model = "${model}"`,
@@ -97,7 +98,7 @@ export function buildConfigToml(options: BuildConfigTomlOptions = {}) {
   const provider =
     options.provider ??
     resolveProvider(
-      options.providerId ?? 'livetoken',
+      options.providerId ?? DEFAULT_PROVIDER,
       options.networkMode ?? 'auto',
       options.internalReachable ?? false
     )
@@ -125,7 +126,7 @@ export async function ensureConfigToml(deps: EnsureConfigTomlDeps) {
 
   const catalogPath = getModelCatalogPath(deps.userProfile)
   await deps.mkdir(path.dirname(configPath))
-  // Bootstrap default is the public LiveToken gateway; the real install run
+  // Bootstrap default is the SolaEon gateway (WAN, no LAN probe); the real install run
   // (service.startInstall) rewrites this with the user's chosen provider.
   await deps.writeFile(configPath, buildConfigToml({ catalogPath }))
   // Write an offline catalog (EXTRA_MODELS only) so config.toml never points at

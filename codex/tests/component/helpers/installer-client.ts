@@ -40,7 +40,6 @@ export function createTestInstallerClient(
     loadEnvironment: async () => [],
     openDesktopApp: async () => false,
     openDesktopAppInstall: async () => false,
-    openProviderSite: async () => false,
     probeNetwork: async () => ({
       internalReachable: false,
       network: 'external' as const,
@@ -76,6 +75,10 @@ export function createTestInstallerClient(
       path: 'C:\\Users\\Tester\\.codex\\models-catalog.json'
     }),
     validateApiKey: async () => ({ ok: true }),
+    listGatewayProfiles: async () => ({ geminiInstalled: false, profiles: [] }),
+    saveGatewayProfile: async () => ({ message: 'not wired in this test', ok: false }),
+    deleteGatewayProfile: async () => ({ ok: true }),
+    switchGateway: async () => ({ message: 'not wired in this test', ok: false, results: [] }),
     ...overrides
   }
 }

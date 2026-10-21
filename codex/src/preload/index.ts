@@ -10,7 +10,6 @@ const api: RendererInstallerApi = {
   loadEnvironment: () => ipcRenderer.invoke(ipcChannels.loadEnvironment),
   openDesktopApp: () => ipcRenderer.invoke(ipcChannels.openDesktopApp),
   openDesktopAppInstall: () => ipcRenderer.invoke(ipcChannels.openDesktopAppInstall),
-  openProviderSite: () => ipcRenderer.invoke(ipcChannels.openProviderSite),
   probeNetwork: () => ipcRenderer.invoke(ipcChannels.probeNetwork),
   listModels: (input) => ipcRenderer.invoke(ipcChannels.listModels, input),
   syncModels: (input) => ipcRenderer.invoke(ipcChannels.syncModels, input),
@@ -34,7 +33,11 @@ const api: RendererInstallerApi = {
   },
   retryTask: (taskId) => ipcRenderer.invoke(ipcChannels.retryTask, taskId),
   resumeInstall: () => ipcRenderer.invoke(ipcChannels.resumeInstall),
-  exportDiagnostics: () => ipcRenderer.invoke(ipcChannels.exportDiagnostics)
+  exportDiagnostics: () => ipcRenderer.invoke(ipcChannels.exportDiagnostics),
+  listGatewayProfiles: () => ipcRenderer.invoke(ipcChannels.listGatewayProfiles),
+  saveGatewayProfile: (input) => ipcRenderer.invoke(ipcChannels.saveGatewayProfile, input),
+  deleteGatewayProfile: (id) => ipcRenderer.invoke(ipcChannels.deleteGatewayProfile, id),
+  switchGateway: (input) => ipcRenderer.invoke(ipcChannels.switchGateway, input)
 }
 
 try {

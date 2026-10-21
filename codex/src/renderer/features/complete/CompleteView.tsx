@@ -7,7 +7,8 @@ interface CompleteViewProps {
   }
   onInstallDesktopApp: () => void
   onOpenDesktopApp: () => void
-  onOpenProviderSite?: () => void
+  /** open 切换网关 (switch Codex / Gemini CLI between saved gateways) */
+  onOpenGatewaySwitch?: () => void
   summary: {
     codexVersion: string
     configPath: string
@@ -16,18 +17,13 @@ interface CompleteViewProps {
   }
 }
 
-const providerHighlights = [
-  '兼容 OpenAI 接口，开箱接入 Codex / Cursor / Cline 等工具链',
-  '默认配置已写好 GPT-5.5 (high reasoning)，无需额外调参',
-  '国内直连稳定，按量计费，控制台余额一目了然'
-]
 
 export function CompleteView({
   actionLabel,
   desktopApp,
   onInstallDesktopApp,
   onOpenDesktopApp,
-  onOpenProviderSite,
+  onOpenGatewaySwitch,
   summary
 }: CompleteViewProps) {
   return (
@@ -61,90 +57,25 @@ export function CompleteView({
           <p style={{ margin: 0 }}>
             Key：<span>{summary.keyMask}</span>
           </p>
-        </div>
-
-        <div
-          style={{
-            borderRadius: '24px',
-            border: '1px solid rgba(125, 211, 252, 0.32)',
-            background:
-              'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(37, 99, 235, 0.12))',
-            padding: '24px',
-            display: 'grid',
-            gap: '14px'
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              gap: '12px',
-              flexWrap: 'wrap'
-            }}
-          >
+          {onOpenGatewaySwitch ? (
             <div>
-              <p
+              <button
+                type="button"
+                onClick={onOpenGatewaySwitch}
                 style={{
-                  margin: 0,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: '#7dd3fc',
-                  fontSize: '0.72rem'
+                  marginTop: '6px',
+                  border: '1px solid rgba(74, 222, 128, 0.5)',
+                  borderRadius: '999px',
+                  padding: '8px 18px',
+                  background: 'transparent',
+                  color: '#bbf7d0',
+                  cursor: 'pointer'
                 }}
               >
-                Powered by LiveToken
-              </p>
-              <h2 style={{ margin: '6px 0 0', fontSize: '1.2rem' }}>关于 LiveToken</h2>
+                ⇄ 切换网关（Codex / Gemini CLI）
+              </button>
             </div>
-            <a
-              href="https://livetoken.top/"
-              style={{
-                color: '#7dd3fc',
-                fontSize: '0.9rem',
-                textDecoration: 'none'
-              }}
-              onClick={(event) => {
-                event.preventDefault()
-                onOpenProviderSite?.()
-              }}
-            >
-              livetoken.top ↗
-            </a>
-          </div>
-          <p style={{ margin: 0, color: '#cbd5e1', lineHeight: 1.6 }}>
-            本次安装已将默认模型提供方配置为 LiveToken。它是一个面向 Codex / 开发者工具的
-            OpenAI 兼容网关：
-          </p>
-          <ul
-            style={{
-              margin: 0,
-              padding: '0 0 0 20px',
-              color: '#e2e8f0',
-              lineHeight: 1.7
-            }}
-          >
-            {providerHighlights.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
-            <button
-              type="button"
-              onClick={() => onOpenProviderSite?.()}
-              style={{
-                border: '1px solid rgba(125, 211, 252, 0.65)',
-                borderRadius: '999px',
-                padding: '12px 22px',
-                background: 'rgba(14, 165, 233, 0.18)',
-                color: '#e0f2fe',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              打开 LiveToken 控制台
-            </button>
-          </div>
+          ) : null}
         </div>
 
         <div

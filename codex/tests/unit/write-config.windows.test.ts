@@ -36,8 +36,8 @@ const expectedConfigToml = [
   'approval_policy = "on-request"',
   'sandbox_mode = "workspace-write"',
   'web_search = "live"',
-  'name = "LiveToken"',
-  'base_url = "https://livetoken.top/v1"',
+  'name = "Solaeon"',
+  'base_url = "https://ai-api.solaeon.com"',
   'wire_api = "responses"',
   'env_key = "OPENAI_API_KEY"',
   '',
@@ -45,16 +45,15 @@ const expectedConfigToml = [
   'conversationDetailMode = "STEPS_COMMANDS"'
 ].join('\n')
 
-const solaeonInternalConfig = expectedConfigToml
-  .replace('name = "LiveToken"', 'name = "Solaeon"')
-  .replace('base_url = "https://livetoken.top/v1"', 'base_url = "http://192.168.1.101:48760"')
+const solaeonInternalConfig = expectedConfigToml.replace(
+  'base_url = "https://ai-api.solaeon.com"',
+  'base_url = "http://192.168.1.101:48760"'
+)
 
 const solaeonExternalConfig = expectedConfigToml
-  .replace('name = "LiveToken"', 'name = "Solaeon"')
-  .replace('base_url = "https://livetoken.top/v1"', 'base_url = "https://ai-api.solaeon.com"')
 
 describe('windows config generation', () => {
-  it('defaults to the LiveToken provider template', () => {
+  it('defaults to the SolaEon (WAN) provider template', () => {
     expect(buildConfigToml()).toBe(expectedConfigToml)
   })
 
@@ -189,7 +188,7 @@ describe('windows config generation', () => {
 
     const merged = mergeInstallerConfig(buildConfigToml(), existing)
 
-    expect(merged).toContain('base_url = "https://livetoken.top/v1"')
+    expect(merged).toContain('base_url = "https://ai-api.solaeon.com"')
     expect(merged).not.toContain('old.example')
     expect(merged).not.toContain('experimental_bearer_token')
   })

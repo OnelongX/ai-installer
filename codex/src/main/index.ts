@@ -1,15 +1,16 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { detectWindowsDesktopApp } from '../main/desktop-app/windows'
+import { createGatewayProfileStore } from '../main/installer/gateway-profiles'
 import { createInstallSessionController } from '../main/installer/session-controller'
 import { ensureConfigToml } from '../main/installer/tasks/write-config.windows'
 import { getPreloadScriptPath } from '../main/preload-path'
 import { createSmokeTestReport, getSmokeTestOutputPath } from '../main/smoke-test'
 import { runCommand } from '../main/system/exec'
-import { ipcChannels, providerSiteUrl } from '../shared/ipc'
+import { ipcChannels } from '../shared/ipc'
 import { appShellTitle } from '../shared/types'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -145,6 +146,29 @@ async function getDesktopAppState() {
 function registerInstallerIpc() {
   const userProfile = process.env.USERPROFILE ?? app.getPath('home')
   const sessionPath = path.join(app.getPath('userData'), 'installer-session.json')
+  const readFileOrNull = async (targetPath: string) => {
+    try {
+      return await fs.readFile(targetPath, 'utf8')
+    } catch {
+      return null
+    }
+  }
+  const profiles = createGatewayProfileStore({
+    filePath: path.join(app.getPath('userData'), 'gateway-profiles.json'),
+    mkdir: async (targetPath) => {
+      await fs.mkdir(targetPath, { recursive: true })
+    },
+    readFile: readFileOrNull,
+    writeFile: (targetPath, value) => fs.writeFile(targetPath, value, 'utf8'),
+    // Keys at rest are DPAPI-encrypted for the current Windows user.
+    encrypt: (plain) => {
+      if (!safeStorage.isEncryptionAvailable()) {
+        throw new Error('系统加密存储不可用，无法安全保存 API Key')
+      }
+      return safeStorage.encryptString(plain).toString('base64')
+    },
+    decrypt: (cipher) => safeStorage.decryptString(Buffer.from(cipher, 'base64'))
+  })
   const controller = createInstallSessionController({
     appVersion: app.getVersion(),
     clearSession: async () => {
@@ -170,13 +194,8 @@ function registerInstallerIpc() {
       await fs.mkdir(targetPath, { recursive: true })
     },
     platform: process.platform,
-    readFile: async (targetPath) => {
-      try {
-        return await fs.readFile(targetPath, 'utf8')
-      } catch {
-        return null
-      }
-    },
+    profiles,
+    readFile: readFileOrNull,
     saveSession: (serialized) => fs.writeFile(sessionPath, serialized, 'utf8'),
     userProfile,
     writeFile: (targetPath, value) => fs.writeFile(targetPath, value, 'utf8')
@@ -189,6 +208,14 @@ function registerInstallerIpc() {
   ipcMain.handle(ipcChannels.listModels, (_event, input) => controller.listModels(input))
   ipcMain.handle(ipcChannels.syncModels, (_event, input) => controller.syncModels(input))
   ipcMain.handle(ipcChannels.getExistingApiKey, () => controller.getExistingApiKey())
+  ipcMain.handle(ipcChannels.listGatewayProfiles, () => controller.listGatewayProfiles())
+  ipcMain.handle(ipcChannels.saveGatewayProfile, (_event, input) =>
+    controller.saveGatewayProfile(input)
+  )
+  ipcMain.handle(ipcChannels.deleteGatewayProfile, (_event, id) =>
+    controller.deleteGatewayProfile(id)
+  )
+  ipcMain.handle(ipcChannels.switchGateway, (_event, input) => controller.switchGateway(input))
   ipcMain.handle(ipcChannels.getAppInfo, async () => ({
     title: appShellTitle,
     version: app.getVersion()
@@ -211,14 +238,6 @@ function registerInstallerIpc() {
 
     try {
       await shell.openExternal(state.downloadUrl)
-      return true
-    } catch {
-      return false
-    }
-  })
-  ipcMain.handle(ipcChannels.openProviderSite, async () => {
-    try {
-      await shell.openExternal(providerSiteUrl)
       return true
     } catch {
       return false

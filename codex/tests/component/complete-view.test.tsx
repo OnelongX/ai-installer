@@ -106,8 +106,8 @@ describe('complete view', () => {
     expect(note).toHaveTextContent('Work browser access requires an authenticated account')
   })
 
-  it('introduces LiveToken and exposes a console CTA', () => {
-    const onOpenProviderSite = vi.fn()
+  it('no longer advertises LiveToken and offers 切换网关 instead', () => {
+    const onOpenGatewaySwitch = vi.fn()
 
     render(
       <CompleteView
@@ -118,20 +118,18 @@ describe('complete view', () => {
         }}
         onInstallDesktopApp={() => {}}
         onOpenDesktopApp={() => {}}
-        onOpenProviderSite={onOpenProviderSite}
+        onOpenGatewaySwitch={onOpenGatewaySwitch}
         summary={{
           codexVersion: '0.1.0',
-          configPath: 'C:\\Users\\Administrator\\.codex\\config.toml',
+          configPath: 'C:\Users\Administrator\.codex\config.toml',
           keyMask: 'sk-***1234',
           status: 'ready'
         }}
       />
     )
 
-    expect(screen.getByText('关于 LiveToken')).toBeInTheDocument()
-    expect(screen.getByText(/兼容 OpenAI 接口/)).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: '打开 LiveToken 控制台' }))
-    expect(onOpenProviderSite).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText(/livetoken/i)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /切换网关/ }))
+    expect(onOpenGatewaySwitch).toHaveBeenCalledTimes(1)
   })
 })

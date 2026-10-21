@@ -9,7 +9,7 @@ import type {
   InstallLogEvent
 } from '../shared/ipc'
 import { DEFAULT_MODEL } from '../shared/models'
-import type { NetworkMode, ProviderId } from '../shared/provider-config'
+import { DEFAULT_PROVIDER, type NetworkMode, type ProviderId } from '../shared/provider-config'
 import { getInstallerTaskLabel } from '../shared/task-labels'
 import { ApiKeyStep } from './features/api-key/ApiKeyStep'
 import { CompleteView } from './features/complete/CompleteView'
@@ -18,6 +18,7 @@ import {
   type DetectionItem
 } from './features/detection/DetectionView'
 import { ExecutionView } from './features/execution/ExecutionView'
+import { GatewaySwitchView } from './features/gateway-switch/GatewaySwitchView'
 import { PlanView } from './features/plan/PlanView'
 import { RepairView } from './features/repair/RepairView'
 import { RecoveryPrompt } from './features/recovery/RecoveryPrompt'
@@ -47,12 +48,22 @@ const fallbackAppInfo: AppInfoData = {
 export default function App({ installerClient }: AppProps) {
   const client = installerClient ?? getInstallerClient()
   const [screen, setScreen] = useState<
-    'api-key' | 'complete' | 'detection' | 'execution' | 'loading' | 'plan' | 'recovery' | 'repair'
+    | 'api-key'
+    | 'complete'
+    | 'detection'
+    | 'execution'
+    | 'gateway-switch'
+    | 'loading'
+    | 'plan'
+    | 'recovery'
+    | 'repair'
   >('loading')
+  // 切换网关 is reachable from the first screen and the complete screen; ← 返回 goes back there.
+  const [switchReturnScreen, setSwitchReturnScreen] = useState<'api-key' | 'complete'>('api-key')
   const [appInfo, setAppInfo] = useState<AppInfoData>(fallbackAppInfo)
   const [plan, setPlan] = useState<InstallPlan | null>(null)
   const [apiKey, setApiKey] = useState('')
-  const [provider, setProvider] = useState<ProviderId>('livetoken')
+  const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER)
   const [networkMode, setNetworkMode] = useState<NetworkMode>('auto')
   const [model, setModel] = useState<string>(DEFAULT_MODEL)
   const [existingKeyMask, setExistingKeyMask] = useState<string | undefined>(undefined)
@@ -247,6 +258,22 @@ export default function App({ installerClient }: AppProps) {
     )
   }
 
+  if (screen === 'gateway-switch') {
+    return (
+      <>
+        {versionBadge}
+        <GatewaySwitchView
+          onBack={() => setScreen(switchReturnScreen)}
+          onDelete={(id) => client.deleteGatewayProfile(id)}
+          onListModels={(args) => client.listModels(args).then((r) => r.models)}
+          onLoad={() => client.listGatewayProfiles()}
+          onSave={(input) => client.saveGatewayProfile(input)}
+          onSwitch={(input) => client.switchGateway(input)}
+        />
+      </>
+    )
+  }
+
   if (screen === 'api-key') {
     return (
       <>
@@ -254,8 +281,9 @@ export default function App({ installerClient }: AppProps) {
         <ApiKeyStep
           existingKeyMask={existingKeyMask}
           canReuseExistingKey={Boolean(existingKeyMask)}
-          onOpenProviderSite={() => {
-            void client.openProviderSite()
+          onOpenGatewaySwitch={() => {
+            setSwitchReturnScreen('api-key')
+            setScreen('gateway-switch')
           }}
           onProbeNetwork={() => client.probeNetwork()}
           onListModels={(args) => client.listModels(args).then((r) => r.models)}
@@ -372,6 +400,10 @@ export default function App({ installerClient }: AppProps) {
         <CompleteView
           actionLabel={desktopAppActionLabel}
           desktopApp={desktopAppState}
+          onOpenGatewaySwitch={() => {
+            setSwitchReturnScreen('complete')
+            setScreen('gateway-switch')
+          }}
           onInstallDesktopApp={() => {
             setDesktopAppActionLabel('正在打开安装页面...')
             void client
@@ -413,9 +445,6 @@ export default function App({ installerClient }: AppProps) {
                   statusMessage: '启动 Codex 桌面版失败，请手动打开已安装的应用。'
                 }))
               })
-          }}
-          onOpenProviderSite={() => {
-            void client.openProviderSite()
           }}
           summary={completionState}
         />

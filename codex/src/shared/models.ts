@@ -1,5 +1,5 @@
 // Models selectable in the Codex installer. All of them are served through the
-// SolaEon / LiveToken gateway (透传), so switching model only changes the
+// SolaEon gateway (透传), so switching model only changes the
 // `model` / `review_model` fields in config.toml — the provider block, base_url
 // and key stay the same.
 //

@@ -1,14 +1,18 @@
 // Model-provider catalog for the Codex installer.
 //
-// Two providers are offered:
-//   - livetoken : the default public gateway (https://livetoken.top/v1)
-//   - solaeon   : an internal deployment reachable at two addresses —
+// One provider is offered:
+//   - solaeon : the SolaEon deployment, reachable at two addresses —
 //       internal (LAN): http://192.168.1.101:48760
 //       external (WAN): https://ai-api.solaeon.com
 //     The right one is chosen by NetworkMode; in `auto` mode the installer
 //     probes the LAN address and falls back to the WAN address.
+//
+// ProviderId stays a named type rather than collapsing into a bare string:
+// the choice is threaded through the IPC contract, saved gateway profiles and
+// the config writers, so keeping it makes adding a second gateway a local
+// change again. (LiveToken was offered here until it went offline.)
 
-export type ProviderId = 'livetoken' | 'solaeon'
+export type ProviderId = 'solaeon'
 
 export type NetworkMode = 'auto' | 'internal' | 'external'
 
@@ -29,17 +33,10 @@ export const solaeonEndpoints = {
   external: 'https://ai-api.solaeon.com'
 } as const
 
-const LIVETOKEN: ResolvedProvider = {
-  id: 'livetoken',
-  name: 'LiveToken',
-  baseUrl: 'https://livetoken.top/v1',
-  envKey: 'OPENAI_API_KEY'
-}
-
-export const DEFAULT_PROVIDER: ProviderId = 'livetoken'
+export const DEFAULT_PROVIDER: ProviderId = 'solaeon'
 
 export function isProviderId(value: string): value is ProviderId {
-  return value === 'livetoken' || value === 'solaeon'
+  return value === 'solaeon'
 }
 
 export function isNetworkMode(value: string): value is NetworkMode {
@@ -50,18 +47,14 @@ export function isNetworkMode(value: string): value is NetworkMode {
  * Resolve a concrete base_url for the chosen provider.
  *
  * @param providerId       which provider the user picked
- * @param networkMode      auto | internal | external (only used for solaeon)
+ * @param networkMode      auto | internal | external
  * @param internalReachable result of the LAN probe (only used when networkMode==='auto')
  */
 export function resolveProvider(
-  providerId: ProviderId,
+  providerId: ProviderId = DEFAULT_PROVIDER,
   networkMode: NetworkMode = 'auto',
   internalReachable = false
 ): ResolvedProvider {
-  if (providerId === 'livetoken') {
-    return { ...LIVETOKEN }
-  }
-
   let network: 'internal' | 'external'
 
   if (networkMode === 'internal') {
@@ -74,7 +67,7 @@ export function resolveProvider(
   }
 
   return {
-    id: 'solaeon',
+    id: providerId,
     name: 'Solaeon',
     baseUrl: solaeonEndpoints[network],
     envKey: 'OPENAI_API_KEY',

@@ -1,7 +1,14 @@
 import { buildInstallPlan } from '../../main/installer/plan'
+import type {
+  DeleteGatewayProfileResult,
+  GatewayProfilesState,
+  SaveGatewayProfileRequest,
+  SaveGatewayProfileResult,
+  SwitchGatewayRequest,
+  SwitchGatewayResult
+} from '../../shared/gateway-switch'
 import {
   ipcChannels,
-  providerSiteUrl,
   type AppInfoData,
   type DesktopAppStateData,
   type DetectionItemData,
@@ -34,7 +41,6 @@ export interface InstallerClient {
   loadEnvironment(): Promise<DetectionItemData[]>
   openDesktopApp(): Promise<boolean>
   openDesktopAppInstall(): Promise<boolean>
-  openProviderSite(): Promise<boolean>
   probeNetwork(): Promise<NetworkProbeResult>
   listModels(input: ListModelsRequest): Promise<ListModelsResult>
   syncModels(input: SyncModelsRequest): Promise<SyncModelsResult>
@@ -44,7 +50,13 @@ export interface InstallerClient {
   subscribeLogs(listener: (event: InstallLogEvent) => void): () => void
   startInstall(input: StartInstallRequest): Promise<InstallExecutionResult>
   validateApiKey(input: string): Promise<ValidationResult>
+  listGatewayProfiles(): Promise<GatewayProfilesState>
+  saveGatewayProfile(input: SaveGatewayProfileRequest): Promise<SaveGatewayProfileResult>
+  deleteGatewayProfile(id: string): Promise<DeleteGatewayProfileResult>
+  switchGateway(input: SwitchGatewayRequest): Promise<SwitchGatewayResult>
 }
+
+const previewOnlyMessage = '预览模式无法切换网关（需在安装器桌面版中执行）。'
 
 const browserSession = {
   diagnostics: '',
@@ -146,14 +158,6 @@ const browserInstallerClient: InstallerClient = {
     return true
   },
 
-  async openProviderSite() {
-    if (typeof window !== 'undefined') {
-      window.open(providerSiteUrl, '_blank', 'noopener,noreferrer')
-    }
-
-    return true
-  },
-
   async probeNetwork() {
     // Browser preview can't open a TCP socket to the LAN box; assume the
     // external address so the UI still shows a sensible resolved endpoint.
@@ -184,6 +188,24 @@ const browserInstallerClient: InstallerClient = {
   async getExistingApiKey() {
     // No environment access in browser preview — treat as "no existing key".
     return { exists: false as const }
+  },
+
+  // 切换网关 writes real config files + user env vars, so it only works in the
+  // desktop app; the preview shows the screen with nothing saved.
+  async listGatewayProfiles(): Promise<GatewayProfilesState> {
+    return { geminiInstalled: false, profiles: [] }
+  },
+
+  async saveGatewayProfile(): Promise<SaveGatewayProfileResult> {
+    return { message: previewOnlyMessage, ok: false }
+  },
+
+  async deleteGatewayProfile(): Promise<DeleteGatewayProfileResult> {
+    return { message: previewOnlyMessage, ok: false }
+  },
+
+  async switchGateway(): Promise<SwitchGatewayResult> {
+    return { message: previewOnlyMessage, ok: false, results: [] }
   },
 
   async resumeInstall() {
@@ -354,8 +376,6 @@ function getIpcRendererApi(): RendererInstallerApi | null {
       openDesktopApp: () => ipcRenderer.invoke(ipcChannels.openDesktopApp) as Promise<boolean>,
       openDesktopAppInstall: () =>
         ipcRenderer.invoke(ipcChannels.openDesktopAppInstall) as Promise<boolean>,
-      openProviderSite: () =>
-        ipcRenderer.invoke(ipcChannels.openProviderSite) as Promise<boolean>,
       probeNetwork: () =>
         ipcRenderer.invoke(ipcChannels.probeNetwork) as Promise<NetworkProbeResult>,
       listModels: (input) =>
@@ -383,7 +403,15 @@ function getIpcRendererApi(): RendererInstallerApi | null {
         }
       },
       validateApiKey: (input) =>
-        ipcRenderer.invoke(ipcChannels.validateApiKey, input) as Promise<ValidationResult>
+        ipcRenderer.invoke(ipcChannels.validateApiKey, input) as Promise<ValidationResult>,
+      listGatewayProfiles: () =>
+        ipcRenderer.invoke(ipcChannels.listGatewayProfiles) as Promise<GatewayProfilesState>,
+      saveGatewayProfile: (input) =>
+        ipcRenderer.invoke(ipcChannels.saveGatewayProfile, input) as Promise<SaveGatewayProfileResult>,
+      deleteGatewayProfile: (id) =>
+        ipcRenderer.invoke(ipcChannels.deleteGatewayProfile, id) as Promise<DeleteGatewayProfileResult>,
+      switchGateway: (input) =>
+        ipcRenderer.invoke(ipcChannels.switchGateway, input) as Promise<SwitchGatewayResult>
     }
   } catch {
     return null

@@ -1,4 +1,5 @@
 import { renderDiagnosticReport } from '../diagnostics/export'
+import type { GatewayProfileStore } from './gateway-profiles'
 import { createInstallerService } from './service'
 
 import type {
@@ -29,6 +30,7 @@ interface InstallSessionControllerDeps {
   loadSession(): Promise<string | null>
   mkdir(path: string): Promise<void>
   platform: string
+  profiles?: GatewayProfileStore
   readFile?(path: string): Promise<string | null>
   saveSession(serialized: string): Promise<void>
   userProfile: string
@@ -59,6 +61,7 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
     exec: deps.exec,
     fileExists: deps.fileExists,
     mkdir: deps.mkdir,
+    profiles: deps.profiles,
     readFile: deps.readFile,
     userProfile: deps.userProfile,
     writeFile: deps.writeFile
@@ -234,6 +237,22 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
 
     getExistingApiKey() {
       return sharedService.getExistingApiKey()
+    },
+
+    listGatewayProfiles() {
+      return sharedService.listGatewayProfiles()
+    },
+
+    saveGatewayProfile(input: Parameters<typeof sharedService.saveGatewayProfile>[0]) {
+      return sharedService.saveGatewayProfile(input)
+    },
+
+    deleteGatewayProfile(id: string) {
+      return sharedService.deleteGatewayProfile(id)
+    },
+
+    switchGateway(input: Parameters<typeof sharedService.switchGateway>[0]) {
+      return sharedService.switchGateway(input)
     },
 
     generatePlan(input: GeneratePlanRequest) {

@@ -15,20 +15,21 @@ describe('api key step', () => {
     expect(screen.getByRole('button', { name: '继续' })).toBeDisabled()
   })
 
-  it('exposes a LiveToken registration CTA that fires the provider callback', () => {
-    const onOpenProviderSite = vi.fn()
-    render(
-      <ApiKeyStep
-        existingKeyMask="sk-***1234"
-        canReuseExistingKey
-        onOpenProviderSite={onOpenProviderSite}
-      />
-    )
+  it('offers only the SolaEon gateway, defaulting to auto', () => {
+    render(<ApiKeyStep existingKeyMask="sk-***1234" canReuseExistingKey />)
 
-    const cta = screen.getByRole('button', { name: '前往 livetoken.top' })
-    expect(cta).toBeInTheDocument()
+    for (const title of ['Solaeon · 自动', 'Solaeon · 内网', 'Solaeon · 外网']) {
+      expect(screen.getByRole('button', { name: new RegExp(title) })).toBeInTheDocument()
+    }
+    expect(screen.queryByText(/livetoken/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/安装时会自动探测内网是否可达/)).toBeInTheDocument()
+  })
 
-    fireEvent.click(cta)
-    expect(onOpenProviderSite).toHaveBeenCalledTimes(1)
+  it('opens 切换网关 from the first screen', () => {
+    const onOpenGatewaySwitch = vi.fn()
+    render(<ApiKeyStep onOpenGatewaySwitch={onOpenGatewaySwitch} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /切换网关/ }))
+    expect(onOpenGatewaySwitch).toHaveBeenCalledTimes(1)
   })
 })

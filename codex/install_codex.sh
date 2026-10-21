@@ -5,17 +5,17 @@
 # 做的事和 Windows 上的 Codex 安装器一一对位：
 #   1. 检测 / 安装 Node.js (brew / apt / dnf / pacman / zypper / fnm 兜底)
 #   2. npm i -g @openai/codex
-#   3. 写 ~/.codex/config.toml (LiveToken / SolaEon 网关 + gpt-5.5 high) 和 models-catalog.json
+#   3. 写 ~/.codex/config.toml (SolaEon 网关，内网 / 外网自动选择 + gpt-5.5 high) 和 models-catalog.json
 #   4. 把 OPENAI_API_KEY 写进 ~/.zshrc / ~/.bashrc
 #   5. 跑 codex --version 验证
 #
-# 也存在一个老 Python 脚本 install_codex_macos.py，那个只装 CLI 不配 LiveToken。
+# 也存在一个老 Python 脚本 install_codex_macos.py，那个只装 CLI 不配网关。
 # 推荐用本脚本（bash，macOS + Linux 通用，配置完整）。
 #
 # 用法：
 #   ./install_codex.sh                                          # 交互式
 #   ./install_codex.sh --api-key sk-xxx
-#   ./install_codex.sh --provider solaeon [--network auto|internal|external]
+#   ./install_codex.sh --network internal                       # 强制内网 (auto|internal|external)
 #   curl -fsSL https://raw.githubusercontent.com/OnelongX/ai-installer/main/codex/install_codex.sh | bash -s -- --api-key sk-xxx
 
 set -euo pipefail
@@ -23,10 +23,9 @@ set -euo pipefail
 API_KEY="${API_KEY:-}"
 # Same provider catalog as src/shared/provider-config.ts (checked by
 # tests/unit/install-sh-parity.test.ts).
-LIVETOKEN_BASE_URL="https://livetoken.top/v1"
 SOLAEON_INTERNAL="http://192.168.1.101:48760"
 SOLAEON_EXTERNAL="https://ai-api.solaeon.com"
-PROVIDER="livetoken"
+PROVIDER="solaeon"
 NETWORK="auto"
 BASE_URL=""
 DEFAULT_MODEL="gpt-5.5"
@@ -50,9 +49,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 case "$PROVIDER" in
-  livetoken) PROVIDER_NAME="LiveToken" ;;
-  solaeon)   PROVIDER_NAME="Solaeon" ;;
-  *) echo "未知 --provider: $PROVIDER（可选 livetoken / solaeon）" >&2; exit 2 ;;
+  solaeon) PROVIDER_NAME="Solaeon" ;;
+  # LiveToken was offered here until it went offline.
+  *) echo "未知 --provider: $PROVIDER（只支持 solaeon；LiveToken 已下线）" >&2; exit 2 ;;
 esac
 case "$NETWORK" in
   auto|internal|external) ;;
@@ -127,9 +126,7 @@ fi
 # 1b. resolve gateway (mirrors resolveProvider + probeSolaeonInternal)
 step "选择网关：$PROVIDER_NAME"
 if [[ -z "$BASE_URL" ]]; then
-  if [[ "$PROVIDER" == "livetoken" ]]; then
-    BASE_URL="$LIVETOKEN_BASE_URL"
-  elif [[ "$NETWORK" == "internal" ]]; then
+  if [[ "$NETWORK" == "internal" ]]; then
     BASE_URL="$SOLAEON_INTERNAL"
   elif [[ "$NETWORK" == "external" ]]; then
     BASE_URL="$SOLAEON_EXTERNAL"
@@ -152,7 +149,7 @@ ok "base_url = $BASE_URL"
 # 2. resolve key
 step "取 $PROVIDER_NAME API Key"
 if [[ -z "$API_KEY" ]]; then
-  API_KEY="${LIVETOKEN_API_KEY:-${OPENAI_API_KEY:-${ANTHROPIC_API_KEY:-}}}"
+  API_KEY="${OPENAI_API_KEY:-}"
   [[ -n "$API_KEY" ]] && warn "复用环境变量里已有的 Key"
 fi
 if [[ -z "$API_KEY" ]]; then
@@ -160,11 +157,7 @@ if [[ -z "$API_KEY" ]]; then
     fail "非交互模式下必须传 --api-key。"
     exit 1
   fi
-  if [[ "$PROVIDER" == "livetoken" ]]; then
-    printf "请粘贴 LiveToken API Key (注册: https://livetoken.top): "
-  else
-    printf "请粘贴 SolaEon API Key: "
-  fi
+  printf "请粘贴 SolaEon API Key: "
   stty -echo; read -r API_KEY; stty echo; printf "\n"
 fi
 API_KEY="${API_KEY// /}"
@@ -428,15 +421,20 @@ if [[ $SKIP_RC -eq 0 ]]; then
       ;;
   esac
   touch "$rc"
-  marker="# >>> ai-installer / codex / livetoken >>>"
-  end="# <<< ai-installer / codex / livetoken <<<"
-  if grep -qF "$marker" "$rc"; then
-    awk -v m="$marker" -v e="$end" '$0==m{skip=1;next} skip && $0==e{skip=0;next} !skip{print}' "$rc" > "$rc.tmp" && mv "$rc.tmp" "$rc"
-  fi
+  marker="# >>> ai-installer / codex / solaeon >>>"
+  end="# <<< ai-installer / codex / solaeon <<<"
+  # Drop our previous block, including the old LiveToken-era one, so the key
+  # is exported exactly once.
+  for tag in solaeon livetoken; do
+    m="# >>> ai-installer / codex / $tag >>>"
+    e="# <<< ai-installer / codex / $tag <<<"
+    if grep -qF "$m" "$rc"; then
+      awk -v m="$m" -v e="$e" '$0==m{skip=1;next} skip && $0==e{skip=0;next} !skip{print}' "$rc" > "$rc.tmp" && mv "$rc.tmp" "$rc"
+    fi
+  done
   {
     printf "\n%s\n" "$marker"
     printf "export OPENAI_API_KEY=%q\n" "$API_KEY"
-    printf "export LIVETOKEN_API_KEY=%q\n" "$API_KEY"
     printf "%s\n" "$end"
   } >> "$rc"
   ok "已在 $rc 写入 OPENAI_API_KEY=$mask"

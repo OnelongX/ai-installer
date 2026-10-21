@@ -11,7 +11,7 @@ import {
 
 describe('codex detect-gateway', () => {
   it('normalizes base_url to {root}/v1/models', () => {
-    expect(modelsEndpoint('https://livetoken.top/v1')).toBe('https://livetoken.top/v1/models')
+    expect(modelsEndpoint('https://gateway.example/v1')).toBe('https://gateway.example/v1/models')
     expect(modelsEndpoint('https://ai-api.solaeon.com')).toBe(
       'https://ai-api.solaeon.com/v1/models'
     )
@@ -20,7 +20,7 @@ describe('codex detect-gateway', () => {
     )
   })
 
-  const livetoken = resolveProvider('livetoken')
+  const gateway = resolveProvider('solaeon', 'external')
 
   function fakeFetch(status: number, body: unknown) {
     return async () => ({
@@ -32,7 +32,7 @@ describe('codex detect-gateway', () => {
 
   it('passes and counts models on a 200 with data', async () => {
     const result = await checkGatewayReachable(
-      livetoken,
+      gateway,
       'sk',
       fakeFetch(200, { data: [{ id: 'gpt-5.5' }, { id: 'gpt-5' }] })
     )
@@ -41,13 +41,13 @@ describe('codex detect-gateway', () => {
   })
 
   it('fails on non-2xx', async () => {
-    const result = await checkGatewayReachable(livetoken, 'sk', fakeFetch(403, ''))
+    const result = await checkGatewayReachable(gateway, 'sk', fakeFetch(403, ''))
     expect(result.ok).toBe(false)
     expect(result.error).toContain('403')
   })
 
   it('fails gracefully when fetch throws', async () => {
-    const result = await checkGatewayReachable(livetoken, 'sk', async () => {
+    const result = await checkGatewayReachable(gateway, 'sk', async () => {
       throw new Error('ENOTFOUND')
     })
     expect(result.ok).toBe(false)
@@ -56,7 +56,7 @@ describe('codex detect-gateway', () => {
 
   it('fetchGatewayModelIds returns the id list (data-wrapped)', async () => {
     const ids = await fetchGatewayModelIds(
-      livetoken,
+      gateway,
       'sk',
       fakeFetch(200, { data: [{ id: 'gpt-5.6-sol' }, { id: 'kimi-k3' }] })
     )
@@ -65,7 +65,7 @@ describe('codex detect-gateway', () => {
 
   it('parses the SolaEon Codex shape ({models:[{slug, display_name}]})', async () => {
     const models = await fetchGatewayModels(
-      livetoken,
+      gateway,
       'sk',
       fakeFetch(200, {
         models: [
@@ -81,9 +81,9 @@ describe('codex detect-gateway', () => {
   })
 
   it('fetchGatewayModels returns [] on failure so the UI keeps its fallback', async () => {
-    expect(await fetchGatewayModels(livetoken, 'sk', fakeFetch(401, ''))).toEqual([])
+    expect(await fetchGatewayModels(gateway, 'sk', fakeFetch(401, ''))).toEqual([])
     expect(
-      await fetchGatewayModels(livetoken, 'sk', async () => {
+      await fetchGatewayModels(gateway, 'sk', async () => {
         throw new Error('boom')
       })
     ).toEqual([])

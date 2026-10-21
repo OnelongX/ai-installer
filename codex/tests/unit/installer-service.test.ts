@@ -121,7 +121,7 @@ describe('installer service', () => {
         }
       })
 
-      const result = await service.syncModels({ provider: 'livetoken' })
+      const result = await service.syncModels({ provider: 'solaeon' })
 
       expect(result.ok).toBe(false)
       expect(result.message).toBeTruthy()

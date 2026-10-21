@@ -9,7 +9,27 @@ import type {
   ValidationResult
 } from '../../shared/ipc'
 import { isApiKeyValueValid } from '../../renderer/features/api-key/api-key-state'
-import { resolveProvider } from '../../shared/provider-config'
+import {
+  geminiBaseUrl,
+  switchTargets,
+  type DeleteGatewayProfileResult,
+  type GatewayProfilesState,
+  type SaveGatewayProfileResult,
+  type SaveGatewayProfileRequest,
+  type SwitchGatewayRequest,
+  type SwitchGatewayResult,
+  type SwitchTargetResult
+} from '../../shared/gateway-switch'
+import {
+  DEFAULT_PROVIDER,
+  isNetworkMode,
+  isProviderId,
+  resolveProvider,
+  type NetworkMode,
+  type ProviderId,
+  type ResolvedProvider
+} from '../../shared/provider-config'
+import { maskKey, type GatewayProfileStore } from './gateway-profiles'
 import { buildInstallPlan } from './plan'
 import { buildModelCatalog } from '../../shared/model-catalog'
 import { checkGatewayReachable, fetchGatewayModels } from './tasks/detect-gateway'
@@ -20,6 +40,11 @@ import { detectNode } from './tasks/detect-node'
 import { detectSystem } from './tasks/detect-system'
 import { getInstallCodexWindowsCommand } from './tasks/install-codex.windows'
 import { getInstallNodeWindowsCommand } from './tasks/install-node.windows'
+import {
+  buildPersistGeminiEnvCommand,
+  getGeminiSettingsPath,
+  mergeGeminiSettings
+} from './tasks/gemini-config'
 import { buildPersistApiKeyCommand } from './tasks/persist-api-key.windows'
 import {
   buildConfigToml,
@@ -45,24 +70,18 @@ interface InstallerServiceDeps {
   fileExists(path: string): Promise<boolean>
   mkdir(path: string): Promise<void>
   onLog?(event: InstallLogEvent): Promise<void> | void
+  /** saved gateway profiles for 切换网关 (absent in tests that don't need it) */
+  profiles?: GatewayProfileStore
   /** Returns null when the file is missing; used to keep existing [desktop] settings. */
   readFile?(path: string): Promise<string | null>
   userProfile: string
   writeFile(path: string, value: string): Promise<void>
 }
 
+const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error))
+
 const INSTALL_TIMEOUT_MS = 600_000
 const VERIFY_TIMEOUT_MS = 60_000
-
-function maskKey(apiKey: string) {
-  const trimmed = apiKey.trim()
-
-  if (trimmed.length < 6) {
-    return '***'
-  }
-
-  return `${trimmed.slice(0, 2)}***${trimmed.slice(-4)}`
-}
 
 function toIssue(error: unknown) {
   const message = error instanceof Error ? error.message : '安装失败'
@@ -128,7 +147,184 @@ async function refreshProcessPath(exec: InstallerServiceDeps['exec']) {
 }
 
 export function createInstallerService(deps: InstallerServiceDeps) {
+  const runPowerShell = (command: string) =>
+    deps.exec('powershell', ['-NoProfile', '-Command', command], { timeoutMs: VERIFY_TIMEOUT_MS })
+
+  /** Back up `filePath` (if it has content) and write `value` over it. */
+  async function writeWithBackup(filePath: string, existing: string | null, value: string) {
+    await deps.mkdir(path.dirname(filePath))
+    let backupPath: string | undefined
+    if (existing?.trim()) {
+      backupPath = getConfigBackupPath(filePath)
+      await deps.writeFile(backupPath, existing)
+    }
+    await deps.writeFile(filePath, value)
+    return backupPath
+  }
+
+  // Merge the installer-owned keys into config.toml (mcp_servers / plugins /
+  // projects / desktop prefs are kept) and rebuild models-catalog.json from the
+  // live /v1/models list + EXTRA_MODELS. Shared by the install run and 切换网关.
+  async function writeCodexConfig(provider: ResolvedProvider, model: string | undefined, apiKey: string) {
+    const configPath = getConfigTomlPath(deps.userProfile)
+    const catalogPath = getModelCatalogPath(deps.userProfile)
+    const existing = (await deps.readFile?.(configPath)) ?? null
+    const backupPath = await writeWithBackup(
+      configPath,
+      existing,
+      mergeInstallerConfig(buildConfigToml({ provider, model, catalogPath }), existing)
+    )
+
+    const gatewayModels = await fetchGatewayModels(provider, apiKey)
+    const catalog = buildModelCatalog(gatewayModels.map((m) => m.id))
+    await deps.writeFile(catalogPath, JSON.stringify(catalog, null, 2))
+
+    return { backupPath, catalogCount: catalog.models.length, gatewayCount: gatewayModels.length }
+  }
+
+  async function resolveForProfile(providerId: ProviderId, networkMode: NetworkMode) {
+    const internalReachable =
+      providerId === 'solaeon' && networkMode === 'auto' ? await probeSolaeonInternal() : false
+    return resolveProvider(providerId, networkMode, internalReachable)
+  }
+
+  function requireProfiles() {
+    if (!deps.profiles) {
+      throw new Error('网关配置存储不可用')
+    }
+    return deps.profiles
+  }
+
+  async function switchCodex(provider: ResolvedProvider, model: string, apiKey: string) {
+    const written = await writeCodexConfig(provider, model, apiKey)
+    const persisted = await runPowerShell(buildPersistApiKeyCommand(apiKey))
+    if (persisted.exitCode !== 0) {
+      throw new Error(persisted.stderr || 'OPENAI_API_KEY 写入失败')
+    }
+    // So this process (getExistingApiKey, 更新模型目录) sees the new key too.
+    process.env.OPENAI_API_KEY = apiKey
+    return [
+      `已切到 ${provider.name}（${provider.baseUrl}），模型 ${model}`,
+      `模型目录 ${written.catalogCount} 个（网关 ${written.gatewayCount} + 内置补充）`,
+      written.backupPath ? `原配置已备份 → ${written.backupPath}` : ''
+    ]
+      .filter(Boolean)
+      .join('；')
+  }
+
+  async function switchGemini(provider: ResolvedProvider, model: string, apiKey: string) {
+    if (!deps.readFile) {
+      throw new Error('无法读取 Gemini 配置')
+    }
+    const settingsPath = getGeminiSettingsPath(deps.userProfile)
+    const existing = await deps.readFile(settingsPath)
+    let merged: string
+    try {
+      merged = mergeGeminiSettings(existing, model)
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      throw new Error(`${settingsPath} 无法解析（${reason}），未做修改，请先修正该文件`)
+    }
+    const backupPath = await writeWithBackup(settingsPath, existing, merged)
+
+    const baseUrl = geminiBaseUrl(provider.baseUrl)
+    const persisted = await runPowerShell(buildPersistGeminiEnvCommand(apiKey, baseUrl))
+    if (persisted.exitCode !== 0) {
+      throw new Error(persisted.stderr || 'GEMINI_API_KEY 写入失败')
+    }
+    process.env.GEMINI_API_KEY = apiKey
+    process.env.GOOGLE_GEMINI_BASE_URL = baseUrl
+    return [
+      `已切到 ${provider.name}（GOOGLE_GEMINI_BASE_URL=${baseUrl}），模型 ${model}`,
+      backupPath ? `原配置已备份 → ${backupPath}` : ''
+    ]
+      .filter(Boolean)
+      .join('；')
+  }
+
+  // Each target is switched independently: a broken ~/.gemini/settings.json must
+  // not stop Codex from switching, and vice versa.
+  async function switchGatewayUnsafe(input: SwitchGatewayRequest): Promise<SwitchGatewayResult> {
+    const store = requireProfiles()
+    const profile = await store.get(input.profileId)
+    if (!profile) {
+      return { message: '找不到这个网关配置', ok: false, results: [] }
+    }
+    // Profiles saved before LiveToken went offline can still say "livetoken".
+    if (!isProviderId(profile.provider) || !isNetworkMode(profile.networkMode)) {
+      return {
+        message: `「${profile.name}」使用的网关（${profile.provider}）已下线，请点「编辑」改为 SolaEon 后再切换`,
+        ok: false,
+        results: []
+      }
+    }
+    const targets = switchTargets.filter((target) => input.targets.includes(target))
+    if (!targets.length) {
+      return { message: '请至少选择一个要切换的工具', ok: false, results: [] }
+    }
+
+    const apiKey = await store.getKey(profile.id)
+    const provider = await resolveForProfile(profile.provider, profile.networkMode)
+    const results: SwitchTargetResult[] = []
+    for (const target of targets) {
+      try {
+        const message =
+          target === 'codex'
+            ? await switchCodex(provider, profile.codexModel, apiKey)
+            : await switchGemini(provider, profile.geminiModel, apiKey)
+        results.push({ message, ok: true, target })
+      } catch (error) {
+        results.push({ message: errorMessage(error), ok: false, target })
+      }
+    }
+
+    if (results.some((result) => result.ok)) {
+      await store.setActive(profile.id)
+    }
+    return { baseUrl: provider.baseUrl, ok: results.every((result) => result.ok), results }
+  }
+
   return {
+    async listGatewayProfiles(): Promise<GatewayProfilesState> {
+      const geminiInstalled = Boolean(
+        await detectInstalledBinary(deps.exec, 'gemini', ['--version'])
+      )
+      try {
+        const { profiles, activeProfileId } = await requireProfiles().list()
+        return { activeProfileId, geminiInstalled, profiles }
+      } catch (error) {
+        return { error: errorMessage(error), geminiInstalled, profiles: [] }
+      }
+    },
+
+    async saveGatewayProfile(input: SaveGatewayProfileRequest): Promise<SaveGatewayProfileResult> {
+      if (input.apiKey?.trim() && !isApiKeyValueValid(input.apiKey)) {
+        return { message: 'API Key 必须是以 sk- 开头，或为 64 位长度的 token。', ok: false }
+      }
+      try {
+        return { ok: true, profile: await requireProfiles().save(input) }
+      } catch (error) {
+        return { message: errorMessage(error), ok: false }
+      }
+    },
+
+    async deleteGatewayProfile(id: string): Promise<DeleteGatewayProfileResult> {
+      try {
+        await requireProfiles().remove(id)
+        return { ok: true }
+      } catch (error) {
+        return { message: errorMessage(error), ok: false }
+      }
+    },
+
+    async switchGateway(input: SwitchGatewayRequest): Promise<SwitchGatewayResult> {
+      try {
+        return await switchGatewayUnsafe(input)
+      } catch (error) {
+        return { message: errorMessage(error), ok: false, results: [] }
+      }
+    },
+
     async loadEnvironment(): Promise<DetectionItemData[]> {
       const configBootstrap = await ensureConfigToml({
         fileExists: deps.fileExists,
@@ -176,10 +372,10 @@ export function createInstallerService(deps: InstallerServiceDeps) {
 
     async listModels(input: {
       apiKey: string
-      provider?: 'livetoken' | 'solaeon'
+      provider?: ProviderId
       networkMode?: 'auto' | 'internal' | 'external'
     }) {
-      const providerId = input.provider ?? 'livetoken'
+      const providerId = input.provider ?? DEFAULT_PROVIDER
       const networkMode = input.networkMode ?? 'auto'
       let internalReachable = false
       if (providerId === 'solaeon' && networkMode === 'auto') {
@@ -197,7 +393,7 @@ export function createInstallerService(deps: InstallerServiceDeps) {
 
     async syncModels(input: {
       apiKey?: string
-      provider?: 'livetoken' | 'solaeon'
+      provider?: ProviderId
       networkMode?: 'auto' | 'internal' | 'external'
     }) {
       // Refresh models-catalog.json without a full reinstall. Key comes from the
@@ -213,7 +409,7 @@ export function createInstallerService(deps: InstallerServiceDeps) {
         }
       }
 
-      const providerId = input.provider ?? 'livetoken'
+      const providerId = input.provider ?? DEFAULT_PROVIDER
       const networkMode = input.networkMode ?? 'auto'
       let internalReachable = false
       if (providerId === 'solaeon' && networkMode === 'auto') {
@@ -265,7 +461,7 @@ export function createInstallerService(deps: InstallerServiceDeps) {
       const resolveOnce = (() => {
         let cached: Awaited<ReturnType<typeof resolveProviderForRun>> | null = null
         const resolveProviderForRun = async () => {
-          const providerId = input.provider ?? 'livetoken'
+          const providerId = input.provider ?? DEFAULT_PROVIDER
           const networkMode = input.networkMode ?? 'auto'
           let internalReachable = false
           if (providerId === 'solaeon' && networkMode === 'auto') {
@@ -419,37 +615,18 @@ export function createInstallerService(deps: InstallerServiceDeps) {
                 taskId: task,
                 type: 'task-output'
               })
-              await deps.mkdir(path.dirname(configPath))
-              // Merge rather than overwrite: keep mcp_servers / plugins / projects /
-              // desktop prefs, and back up the previous file first.
-              const existingConfig = (await deps.readFile?.(configPath)) ?? null
-              if (existingConfig?.trim()) {
-                const backupPath = getConfigBackupPath(configPath)
-                await deps.writeFile(backupPath, existingConfig)
+              const written = await writeCodexConfig(resolvedProvider, input.model, input.apiKey)
+              if (written.backupPath) {
                 await emitLog({
                   level: 'info',
-                  message: `已备份原配置 → ${backupPath}`,
+                  message: `已备份原配置 → ${written.backupPath}`,
                   taskId: task,
                   type: 'task-output'
                 })
               }
-              await deps.writeFile(
-                configPath,
-                mergeInstallerConfig(
-                  buildConfigToml({ provider: resolvedProvider, model: input.model, catalogPath }),
-                  existingConfig
-                )
-              )
-
-              // Generate the model catalog so Codex's /model picker lists every
-              // gateway model. Merge the live /v1/models list with EXTRA_MODELS
-              // (ids the passthrough gateway routes but doesn't advertise).
-              const gatewayModels = await fetchGatewayModels(resolvedProvider, input.apiKey)
-              const catalog = buildModelCatalog(gatewayModels.map((m) => m.id))
-              await deps.writeFile(catalogPath, JSON.stringify(catalog, null, 2))
               await emitLog({
                 level: 'info',
-                message: `写入 ${catalogPath}（${catalog.models.length} 个模型：网关 ${gatewayModels.length} + 内置补充）`,
+                message: `写入 ${catalogPath}（${written.catalogCount} 个模型：网关 ${written.gatewayCount} + 内置补充）`,
                 taskId: task,
                 type: 'task-output'
               })

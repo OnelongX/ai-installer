@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DEFAULT_PROVIDER,
   resolveProvider,
   solaeonEndpoints,
   isProviderId,
@@ -8,11 +9,11 @@ import {
 } from '../../src/shared/provider-config'
 
 describe('provider-config', () => {
-  it('resolves livetoken regardless of network mode', () => {
-    const p = resolveProvider('livetoken', 'internal', true)
-    expect(p.id).toBe('livetoken')
-    expect(p.baseUrl).toBe('https://livetoken.top/v1')
-    expect(p.network).toBeUndefined()
+  it('defaults to SolaEon over the WAN when nothing is probed', () => {
+    const p = resolveProvider()
+    expect(p.id).toBe('solaeon')
+    expect(p.baseUrl).toBe(solaeonEndpoints.external)
+    expect(DEFAULT_PROVIDER).toBe('solaeon')
   })
 
   it('resolves solaeon internal when forced internal', () => {
@@ -47,7 +48,8 @@ describe('provider-config', () => {
   })
 
   it('type guards accept valid values and reject junk', () => {
-    expect(isProviderId('livetoken')).toBe(true)
+    // LiveToken went offline and is no longer a provider
+    expect(isProviderId('livetoken')).toBe(false)
     expect(isProviderId('solaeon')).toBe(true)
     expect(isProviderId('nope')).toBe(false)
     expect(isNetworkMode('auto')).toBe(true)

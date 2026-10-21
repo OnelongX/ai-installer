@@ -9,7 +9,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 
 import { buildConfigToml } from '../../src/main/installer/tasks/write-config.windows'
 import { buildModelCatalog } from '../../src/shared/model-catalog'
-import { resolveProvider, solaeonEndpoints } from '../../src/shared/provider-config'
+import { DEFAULT_PROVIDER, resolveProvider, solaeonEndpoints } from '../../src/shared/provider-config'
 
 // install_codex.sh can't import the TS sources (it runs via curl | bash), so it
 // carries its own copy of the config template, provider endpoints and model
@@ -85,14 +85,13 @@ function startGateway(body: unknown, seen: { auth?: string; url?: string }) {
 
 describe('install_codex.sh parity with the Windows installer', () => {
   it('uses the same provider endpoints', () => {
-    expect(shellVar('LIVETOKEN_BASE_URL')).toBe(resolveProvider('livetoken').baseUrl)
+    expect(shellVar('PROVIDER')).toBe(DEFAULT_PROVIDER)
     expect(shellVar('SOLAEON_INTERNAL')).toBe(solaeonEndpoints.internal)
     expect(shellVar('SOLAEON_EXTERNAL')).toBe(solaeonEndpoints.external)
     expect(shellVar('DEFAULT_MODEL')).toBe('gpt-5.5')
   })
 
   it.each([
-    ['livetoken', resolveProvider('livetoken')],
     ['solaeon internal', resolveProvider('solaeon', 'internal')],
     ['solaeon external', resolveProvider('solaeon', 'external')]
   ])('renders the same config.toml as Windows (%s)', (_, provider) => {

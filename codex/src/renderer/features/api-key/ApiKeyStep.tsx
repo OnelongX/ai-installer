@@ -16,15 +16,17 @@ import {
   type ApiKeyViewState
 } from './api-key-state'
 
-type ProviderChoice = 'livetoken' | 'solaeon-auto' | 'solaeon-internal' | 'solaeon-external'
+export type ProviderChoice = 'solaeon-auto' | 'solaeon-internal' | 'solaeon-external'
 
-function toProviderAndMode(choice: ProviderChoice): {
+export function toProviderChoice(_provider: ProviderId, networkMode: NetworkMode): ProviderChoice {
+  return `solaeon-${networkMode}`
+}
+
+export function toProviderAndMode(choice: ProviderChoice): {
   provider: ProviderId
   networkMode: NetworkMode
 } {
   switch (choice) {
-    case 'livetoken':
-      return { provider: 'livetoken', networkMode: 'auto' }
     case 'solaeon-internal':
       return { provider: 'solaeon', networkMode: 'internal' }
     case 'solaeon-external':
@@ -35,12 +37,11 @@ function toProviderAndMode(choice: ProviderChoice): {
   }
 }
 
-const providerChoices: Array<{
+export const providerChoices: Array<{
   id: ProviderChoice
   title: string
   detail: string
 }> = [
-  { id: 'livetoken', title: 'LiveToken', detail: '公共网关 · https://livetoken.top/v1' },
   {
     id: 'solaeon-auto',
     title: 'Solaeon · 自动',
@@ -60,7 +61,8 @@ interface ApiKeyStepProps {
     networkMode: NetworkMode
     model: string
   }) => void
-  onOpenProviderSite?: () => void
+  /** open 切换网关 (switch Codex / Gemini CLI between saved gateways) */
+  onOpenGatewaySwitch?: () => void
   onProbeNetwork?: () => Promise<NetworkProbeResult>
   onListModels?: (args: {
     apiKey: string
@@ -111,7 +113,7 @@ export function ApiKeyStep({
   existingKeyMask,
   canReuseExistingKey = false,
   onContinue,
-  onOpenProviderSite,
+  onOpenGatewaySwitch,
   onProbeNetwork,
   onListModels,
   onSyncModels
@@ -119,7 +121,7 @@ export function ApiKeyStep({
   const [mode, setMode] = useState<ApiKeySelectionMode>(null)
   const [showValue, setShowValue] = useState(false)
   const [value, setValue] = useState('')
-  const [providerChoice, setProviderChoice] = useState<ProviderChoice>('livetoken')
+  const [providerChoice, setProviderChoice] = useState<ProviderChoice>('solaeon-auto')
   const [model, setModel] = useState<string>(DEFAULT_MODEL)
   const [availableModels, setAvailableModels] = useState<CodexModel[]>(codexModels)
   const [modelsFromGateway, setModelsFromGateway] = useState(false)
@@ -233,6 +235,23 @@ export function ApiKeyStep({
           >
             安装器不会静默复用凭证。请选择继续使用已检测到的 Key，或为这台电脑输入一个新的 Key。
           </p>
+          {onOpenGatewaySwitch ? (
+            <button
+              type="button"
+              onClick={onOpenGatewaySwitch}
+              style={{
+                marginTop: '16px',
+                border: '1px solid rgba(125, 211, 252, 0.5)',
+                background: 'rgba(14, 165, 233, 0.1)',
+                color: '#e0f2fe',
+                borderRadius: '999px',
+                padding: '8px 18px',
+                cursor: 'pointer'
+              }}
+            >
+              ⇄ 已经装好了？切换网关（Codex / Gemini CLI，无需重装）
+            </button>
+          ) : null}
         </div>
 
         <div style={{ ...sectionStyle, display: 'grid', gap: '16px' }}>
@@ -486,60 +505,6 @@ export function ApiKeyStep({
             </div>
           </label>
 
-          <div
-            style={{
-              borderRadius: '18px',
-              border: '1px solid rgba(125, 211, 252, 0.32)',
-              background:
-                'linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(37, 99, 235, 0.12))',
-              padding: '18px 20px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '16px',
-              flexWrap: 'wrap'
-            }}
-          >
-            <div style={{ minWidth: '220px' }}>
-              <p
-                style={{
-                  margin: 0,
-                  color: '#7dd3fc',
-                  fontSize: '0.7rem',
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase'
-                }}
-              >
-                推荐 · LiveToken
-              </p>
-              <p
-                style={{
-                  margin: '6px 0 0',
-                  color: '#f8fafc',
-                  fontSize: '0.98rem',
-                  lineHeight: 1.5
-                }}
-              >
-                还没有 API Key？前往 livetoken.top 注册并领取，即可直接配合安装器开箱使用。
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => onOpenProviderSite?.()}
-              style={{
-                borderRadius: '999px',
-                border: '1px solid rgba(125, 211, 252, 0.65)',
-                background: 'rgba(14, 165, 233, 0.18)',
-                color: '#e0f2fe',
-                padding: '10px 18px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              前往 livetoken.top
-            </button>
-          </div>
         </div>
 
         <div

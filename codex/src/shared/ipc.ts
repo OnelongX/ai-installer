@@ -1,3 +1,11 @@
+import type {
+  DeleteGatewayProfileResult,
+  GatewayProfilesState,
+  SaveGatewayProfileRequest,
+  SaveGatewayProfileResult,
+  SwitchGatewayRequest,
+  SwitchGatewayResult
+} from './gateway-switch'
 import type { GatewayModel } from './models'
 import type { NetworkMode, ProviderId } from './provider-config'
 
@@ -24,7 +32,7 @@ export interface GeneratePlanRequest {
 export interface StartInstallRequest {
   apiKey: string
   plan: InstallPlanData
-  /** which model provider to write into config.toml (default: livetoken) */
+  /** which model provider to write into config.toml (default: solaeon) */
   provider?: ProviderId
   /** for solaeon: auto probes the LAN, internal/external force one address */
   networkMode?: NetworkMode
@@ -130,9 +138,6 @@ export interface InstallFailureResult {
 
 export type InstallExecutionResult = InstallFailureResult | InstallSuccessResult
 
-export const providerSiteUrl = 'https://livetoken.top/'
-export const providerDisplayName = 'LiveToken'
-
 export const ipcChannels = {
   getAppInfo: 'installer:get-app-info',
   getDesktopAppState: 'installer:get-desktop-app-state',
@@ -144,7 +149,6 @@ export const ipcChannels = {
   loadEnvironment: 'installer:load-environment',
   openDesktopApp: 'installer:open-desktop-app',
   openDesktopAppInstall: 'installer:open-desktop-app-install',
-  openProviderSite: 'installer:open-provider-site',
   probeNetwork: 'installer:probe-network',
   listModels: 'installer:list-models',
   syncModels: 'installer:sync-models',
@@ -152,7 +156,11 @@ export const ipcChannels = {
   retryTask: 'installer:retry-task',
   startInstall: 'installer:start',
   subscribeLogs: 'installer:subscribe-logs',
-  validateApiKey: 'installer:validate-api-key'
+  validateApiKey: 'installer:validate-api-key',
+  listGatewayProfiles: 'installer:list-gateway-profiles',
+  saveGatewayProfile: 'installer:save-gateway-profile',
+  deleteGatewayProfile: 'installer:delete-gateway-profile',
+  switchGateway: 'installer:switch-gateway'
 } as const
 
 export interface RendererInstallerApi {
@@ -163,7 +171,6 @@ export interface RendererInstallerApi {
   loadEnvironment(): Promise<DetectionItemData[]>
   openDesktopApp(): Promise<boolean>
   openDesktopAppInstall(): Promise<boolean>
-  openProviderSite(): Promise<boolean>
   probeNetwork(): Promise<NetworkProbeResult>
   listModels(input: ListModelsRequest): Promise<ListModelsResult>
   syncModels(input: SyncModelsRequest): Promise<SyncModelsResult>
@@ -175,4 +182,8 @@ export interface RendererInstallerApi {
   retryTask(taskId: string): Promise<InstallExecutionResult>
   resumeInstall(): Promise<InstallExecutionResult>
   exportDiagnostics(): Promise<string>
+  listGatewayProfiles(): Promise<GatewayProfilesState>
+  saveGatewayProfile(input: SaveGatewayProfileRequest): Promise<SaveGatewayProfileResult>
+  deleteGatewayProfile(id: string): Promise<DeleteGatewayProfileResult>
+  switchGateway(input: SwitchGatewayRequest): Promise<SwitchGatewayResult>
 }

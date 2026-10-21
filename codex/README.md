@@ -1,6 +1,8 @@
 # Codex 安装器 · ai-installer / codex
 
-一个 Windows 桌面工具，零配置帮你在本机装好 [Codex CLI](https://www.npmjs.com/package/@openai/codex) 并接入 [LiveToken](https://livetoken.top/) 网关。
+一个 Windows 桌面工具，零配置帮你在本机装好 [Codex CLI](https://www.npmjs.com/package/@openai/codex) 并接入 SolaEon 网关（内网 / 外网自动选择）。装好后还能一键「切换网关」，同时管 Codex 和 Gemini CLI。
+
+> LiveToken 网关已下线，安装器不再提供该选项。
 
 ![release](https://img.shields.io/badge/release-0.1.4-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey) ![electron](https://img.shields.io/badge/electron-35-47848f)
 
@@ -34,7 +36,7 @@
 
 ## macOS / Linux / WSL
 
-bash 一键脚本（推荐），跟 Windows 版做的事完全对位，含完整 LiveToken provider 配置：
+bash 一键脚本（推荐），跟 Windows 版做的事完全对位（SolaEon 网关、API Key 认证、模型目录），默认先探测内网：
 
 ```bash
 # 在线一行：
@@ -47,9 +49,10 @@ cd ai-installer/codex
 chmod +x install_codex.sh
 ./install_codex.sh                             # 交互式
 ./install_codex.sh --api-key sk-xxx
+./install_codex.sh --network external          # 强制外网（auto | internal | external）
 ```
 
-> 旧的 `install_codex_macos.py` 还在，但它只装 CLI 不写 LiveToken provider。新装请用 `install_codex.sh`。
+> 旧的 `install_codex_macos.py` 还在，但它只装 CLI 不配网关。新装请用 `install_codex.sh`。
 
 > 文件未做代码签名，Windows SmartScreen 第一次会弹"未识别的应用"，点"更多信息 → 仍要运行"即可。
 
@@ -57,9 +60,9 @@ chmod +x install_codex.sh
 
 ## 使用教程
 
-### 1. 准备一把 LiveToken Key
+### 1. 准备一把 SolaEon Key
 
-去 [https://livetoken.top](https://livetoken.top) 注册并生成一把 Key，形如 `sk-xxx...`。
+向管理员领取 SolaEon 网关的 API Key，形如 `sk-xxx...`。
 
 ### 2. 启动安装器，选服务地址 + 输入 API Key
 
@@ -67,12 +70,11 @@ chmod +x install_codex.sh
 
 ![输入 API Key](docs/screenshots/02-api-key-filled.png)
 
-**模型服务地址**支持四种：
+**模型服务地址**支持三种：
 
 | 选项 | base_url | 说明 |
 |---|---|---|
-| LiveToken | `https://livetoken.top/v1` | 公共网关，默认 |
-| Solaeon · 自动 | 探测后决定 | 装的时候先 TCP 探 `192.168.1.101:48760`，通就用内网，不通回落外网 |
+| Solaeon · 自动 | 探测后决定 | 默认。装的时候先 TCP 探 `192.168.1.101:48760`，通就用内网，不通回落外网 |
 | Solaeon · 内网 | `http://192.168.1.101:48760` | 强制内网（LAN 直连） |
 | Solaeon · 外网 | `https://ai-api.solaeon.com` | 强制外网 |
 
@@ -109,7 +111,7 @@ chmod +x install_codex.sh
 
 ### 6. 完成
 
-成功后能看到 Codex CLI 版本号、配置文件路径、API Key 掩码，以及一张 LiveToken 控制台入口卡。
+成功后能看到 Codex CLI 版本号、配置文件路径、API Key 掩码，以及「切换网关」入口。
 
 ![安装完成](docs/screenshots/06-complete.png)
 
@@ -124,6 +126,15 @@ codex
 
 > 注意：环境变量是写到"用户级"，**当前已打开的终端窗口看不到**新值，必须**新开一个**。
 
+### 7. 切换网关（不重装，Codex + Gemini CLI）
+
+首屏或完成页点「⇄ 切换网关」：保存几个网关配置（网关 / 内外网 / API Key / Codex 与 Gemini 默认模型），勾选要切换的工具，点「切换到 …」即可。
+
+- **Codex**：合并写入 `config.toml`（只改网关、Key、模型，MCP / 插件 / 项目等保留），写 `OPENAI_API_KEY`，刷新模型目录
+- **Gemini CLI**：合并写入 `~/.gemini/settings.json`（`security.auth.selectedType = "gemini-api-key"`、`model.name`），写 `GEMINI_API_KEY` 与 `GOOGLE_GEMINI_BASE_URL`
+- 改之前都会备份为 `*.bak-installer-<时间>`；Key 用 Windows DPAPI 加密保存在本机
+- 未装 Gemini CLI 也能先写好配置，之后 `npm i -g @google/gemini-cli` 即可直接用
+
 ---
 
 ## 默认配置长啥样
@@ -134,6 +145,9 @@ codex
 personality = "pragmatic"
 model = "gpt-5.5"
 model_provider = "cm"
+model_catalog_json = 'C:\Users\<你>\.codex\models-catalog.json'
+preferred_auth_method = "apikey"
+forced_login_method = "api"
 review_model = "gpt-5.5"
 model_reasoning_effort = "high"
 plan_mode_reasoning_effort = "xhigh"
@@ -155,13 +169,16 @@ service_tier = "fast"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search = "live"
-name = "LiveToken"
-base_url = "https://livetoken.top/v1"
+name = "Solaeon"
+base_url = "http://192.168.1.101:48760"
 wire_api = "responses"
 env_key = "OPENAI_API_KEY"
+
+[desktop]
+conversationDetailMode = "STEPS_COMMANDS"
 ```
 
-`name` 和 `base_url` 会按你在安装页选的「模型服务地址」变化 —— 选 Solaeon 时 `name = "Solaeon"`、`base_url` 是 `http://192.168.1.101:48760`（内网）或 `https://ai-api.solaeon.com`（外网）。想换模型 / 网关，直接改这个文件即可。
+`base_url` 按「模型服务地址」变化：内网 `http://192.168.1.101:48760`，外网 `https://ai-api.solaeon.com`。重装或切换网关只改上面这些键，文件里其他配置（MCP、插件、项目信任等）都会保留，原文件先备份。想换模型 / 网关，用「切换网关」或直接改这个文件。
 
 ---
 
@@ -279,7 +296,7 @@ src/
 │   ├── App.tsx
 │   ├── features/
 │   │   ├── api-key/
-│   │   ├── complete/           # 完成页 + LiveToken 介绍卡
+│   │   ├── complete/           # 完成页 + 切换网关入口
 │   │   ├── detection/
 │   │   ├── execution/
 │   │   ├── plan/
