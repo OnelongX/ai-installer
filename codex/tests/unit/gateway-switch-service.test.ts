@@ -81,7 +81,9 @@ const profileInput = {
 describe('切换网关 service', () => {
   it('switches Codex and Gemini CLI, keeping their other settings', async () => {
     const { commands, disk, service } = setup({
-      [codexConfig]: 'model = "old"\n\n[mcp_servers.pencil]\ncommand = "pencil.exe"\n',
+      [codexConfig]:
+        'model = "old"\nmodel_reasoning_effort = "low"\nsandbox_mode = "danger-full-access"\n' +
+        'service_tier = "priority"\n\n[mcp_servers.pencil]\ncommand = "pencil.exe"\n',
       [geminiSettings]: JSON.stringify({ mcpServers: { pencil: { command: 'pencil.exe' } } })
     })
     expect(await service.saveGatewayProfile(profileInput)).toMatchObject({ ok: true })
@@ -98,6 +100,11 @@ describe('切换网关 service', () => {
     expect(config).toContain('model = "kimi-k3"')
     expect(config).toContain('[mcp_servers.pencil]')
     expect(config).toContain('base_url = "https://ai-api.solaeon.com"')
+    // a switch only touches gateway keys: the user's own preferences survive
+    expect(config).toContain('model_reasoning_effort = "low"')
+    expect(config).toContain('sandbox_mode = "danger-full-access"')
+    expect(config).toContain('service_tier = "priority"')
+    expect(config).not.toContain('personality')
     expect(JSON.parse(disk.get(geminiSettings)!)).toEqual({
       mcpServers: { pencil: { command: 'pencil.exe' } },
       security: { auth: { selectedType: 'gemini-api-key' } },
@@ -113,6 +120,34 @@ describe('切换网关 service', () => {
     ])
     expect(process.env.GOOGLE_GEMINI_BASE_URL).toBe('https://ai-api.solaeon.com')
     expect((await service.listGatewayProfiles()).activeProfileId).toBe('p1')
+  })
+
+  it('skips Gemini (and leaves its files alone) when the gateway has no Gemini API', async () => {
+    // The SolaEon WAN proxy drops connections for /v1beta; /v1/models still works.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('/v1beta/')) throw new TypeError('fetch failed')
+        return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ id: 'gpt-5.5' }] }) }
+      })
+    )
+    const original = JSON.stringify({ mcpServers: { pencil: { command: 'pencil.exe' } } })
+    const { commands, disk, service } = setup({ [geminiSettings]: original })
+    await service.saveGatewayProfile(profileInput)
+
+    const result = await service.switchGateway({ profileId: 'p1', targets: ['codex', 'gemini'] })
+
+    expect(result.ok).toBe(false)
+    expect(result.results).toEqual([
+      expect.objectContaining({ target: 'codex', ok: true }),
+      expect.objectContaining({
+        target: 'gemini',
+        ok: false,
+        message: expect.stringContaining('没有开放 Gemini 接口')
+      })
+    ])
+    expect(disk.get(geminiSettings)).toBe(original)
+    expect(commands.some((c) => c.includes('GEMINI_API_KEY'))).toBe(false)
   })
 
   it('only switches the selected targets', async () => {

@@ -195,15 +195,13 @@ personality = "pragmatic"
 model = "$DEFAULT_MODEL"
 model_provider = "cm"
 model_catalog_json = '$catalog'
-# Force API-key auth: without these Codex falls back to ChatGPT login and never uses env_key.
-preferred_auth_method = "apikey"
+# Force API-key auth: without it Codex falls back to ChatGPT login and never uses env_key.
 forced_login_method = "api"
 review_model = "$DEFAULT_MODEL"
 model_reasoning_effort = "high"
 plan_mode_reasoning_effort = "xhigh"
 model_reasoning_summary = "detailed"
 model_verbosity = "medium"
-model_supports_reasoning_summaries = true
 approval_policy = "on-request"
 allow_login_shell = true
 sandbox_mode = "workspace-write"
@@ -213,12 +211,8 @@ mcp_oauth_credentials_store = "auto"
 check_for_update_on_startup = true
 web_search = "live"
 approvals_reviewer = "user"
-service_tier = "fast"
 
 [model_providers.cm]
-approval_policy = "on-request"
-sandbox_mode = "workspace-write"
-web_search = "live"
 name = "$PROVIDER_NAME"
 base_url = "$BASE_URL"
 wire_api = "responses"

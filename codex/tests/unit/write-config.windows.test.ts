@@ -1,11 +1,8 @@
-import path from 'node:path'
-
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   buildConfigToml,
-  ensureConfigToml,
+  buildGatewayConfigToml,
   getConfigBackupPath,
-  getConfigTomlPath,
   mergeInstallerConfig
 } from '../../src/main/installer/tasks/write-config.windows'
 
@@ -13,14 +10,12 @@ const expectedConfigToml = [
   'personality = "pragmatic"',
   'model = "gpt-5.5"',
   'model_provider = "cm"',
-  'preferred_auth_method = "apikey"',
   'forced_login_method = "api"',
   'review_model = "gpt-5.5"',
   'model_reasoning_effort = "high"',
   'plan_mode_reasoning_effort = "xhigh"',
   'model_reasoning_summary = "detailed"',
   'model_verbosity = "medium"',
-  'model_supports_reasoning_summaries = true',
   'approval_policy = "on-request"',
   'allow_login_shell = true',
   'sandbox_mode = "workspace-write"',
@@ -30,12 +25,8 @@ const expectedConfigToml = [
   'check_for_update_on_startup = true',
   'web_search = "live"',
   'approvals_reviewer = "user"',
-  'service_tier = "fast"',
   '',
   '[model_providers.cm]',
-  'approval_policy = "on-request"',
-  'sandbox_mode = "workspace-write"',
-  'web_search = "live"',
   'name = "Solaeon"',
   'base_url = "https://ai-api.solaeon.com"',
   'wire_api = "responses"',
@@ -65,7 +56,7 @@ describe('windows config generation', () => {
 
   it('forces api-key auth so Codex uses the key instead of ChatGPT login', () => {
     const toml = buildConfigToml()
-    expect(toml).toContain('preferred_auth_method = "apikey"')
+    expect(toml).not.toContain('preferred_auth_method')
     expect(toml).toContain('forced_login_method = "api"')
   })
 
@@ -193,55 +184,74 @@ describe('windows config generation', () => {
     expect(merged).not.toContain('experimental_bearer_token')
   })
 
-  it('creates the default config file when it is missing', async () => {
-    const mkdir = vi.fn(async () => {})
-    const writeFile = vi.fn(async (_path: string, _value: string) => {})
-    const userProfile = 'C:\\Users\\Administrator'
-
-    const result = await ensureConfigToml({
-      fileExists: async () => false,
-      mkdir,
-      userProfile,
-      writeFile
-    })
-
-    const catalogPath = path.join(userProfile, '.codex', 'models-catalog.json')
-
-    expect(result).toEqual({
-      created: true,
-      path: path.join(userProfile, '.codex', 'config.toml')
-    })
-    expect(mkdir).toHaveBeenCalledWith(path.join(userProfile, '.codex'))
-    // config.toml now points at the generated catalog…
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join(userProfile, '.codex', 'config.toml'),
-      expect.stringContaining(`model_catalog_json = '${catalogPath}'`)
+  it('builds a gateway-only config for 切换网关', () => {
+    expect(
+      buildGatewayConfigToml({
+        providerId: 'solaeon',
+        networkMode: 'internal',
+        model: 'kimi-k3',
+        catalogPath: 'D:/codex-home/models-catalog.json'
+      })
+    ).toBe(
+      [
+        'model = "kimi-k3"',
+        'model_provider = "cm"',
+        "model_catalog_json = 'D:/codex-home/models-catalog.json'",
+              'forced_login_method = "api"',
+        'review_model = "kimi-k3"',
+        '',
+        '[model_providers.cm]',
+        'name = "Solaeon"',
+        'base_url = "http://192.168.1.101:48760"',
+        'wire_api = "responses"',
+        'env_key = "OPENAI_API_KEY"',
+        '',
+        '[desktop]',
+        'conversationDetailMode = "STEPS_COMMANDS"'
+      ].join('\n')
     )
-    // …and the catalog file itself is written (offline EXTRA_MODELS at bootstrap).
-    const catalogCall = writeFile.mock.calls.find((c) => c[0] === catalogPath)
-    expect(catalogCall).toBeDefined()
-    const catalog = JSON.parse(catalogCall![1])
-    expect(catalog.models.length).toBeGreaterThan(0)
-    expect(catalog.models.some((m: { slug: string }) => m.slug === 'deepseek-v4-flash')).toBe(true)
-    expect(catalog.models.some((m: { slug: string }) => m.slug === 'kimi-k3')).toBe(true)
   })
 
-  it('skips rewriting config.toml when it already exists', async () => {
-    const mkdir = vi.fn(async () => {})
-    const writeFile = vi.fn(async () => {})
+  it("switching the gateway keeps the user's own preferences", () => {
+    const existing = [
+      'personality = "friendly"',
+      'model = "gpt-5.4"',
+      'model_reasoning_effort = "low"',
+      'sandbox_mode = "danger-full-access"',
+      'approval_policy = "never"',
+      'service_tier = "priority"'
+    ].join('\n')
 
-    const result = await ensureConfigToml({
-      fileExists: async (targetPath) => targetPath === getConfigTomlPath('C:\\Users\\Administrator'),
-      mkdir,
-      userProfile: 'C:\\Users\\Administrator',
-      writeFile
-    })
+    const merged = mergeInstallerConfig(buildGatewayConfigToml({ model: 'gpt-5.5' }), existing)
 
-    expect(result).toEqual({
-      created: false,
-      path: 'C:\\Users\\Administrator\\.codex\\config.toml'
-    })
-    expect(mkdir).not.toHaveBeenCalled()
-    expect(writeFile).not.toHaveBeenCalled()
+    for (const kept of [
+      'personality = "friendly"',
+      'model_reasoning_effort = "low"',
+      'sandbox_mode = "danger-full-access"',
+      'approval_policy = "never"',
+      'service_tier = "priority"'
+    ]) {
+      expect(merged).toContain(kept)
+    }
+    expect(merged).toContain('model = "gpt-5.5"')
+    expect(merged).not.toContain('model = "gpt-5.4"')
+  })
+
+  it('only writes ModelProviderInfo fields and no service_tier', () => {
+    const providerTable = buildConfigToml().split('[model_providers.cm]\n')[1].split('\n\n')[0]
+    expect(providerTable.split('\n').map((line) => line.split(' = ')[0])).toEqual([
+      'name',
+      'base_url',
+      'wire_api',
+      'env_key'
+    ])
+    expect(buildConfigToml()).not.toContain('service_tier')
+  })
+
+  it('writes no keys that current Codex reports as "is ignored"', () => {
+    // Found by loading the generated config with codex-cli 0.157 / 0.164.
+    for (const ignored of ['preferred_auth_method', 'model_supports_reasoning_summaries']) {
+      expect(buildConfigToml()).not.toContain(ignored)
+    }
   })
 })

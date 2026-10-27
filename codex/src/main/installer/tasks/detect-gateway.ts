@@ -121,6 +121,35 @@ export async function fetchGatewayModelIds(
   )
 }
 
+/**
+ * Does this gateway expose the Gemini API (`{root}/v1beta/...`) that Gemini CLI
+ * talks to? Any HTTP answer — even 401/403 for the key — means the route is
+ * served. The SolaEon WAN proxy instead drops the connection for routes it
+ * doesn't forward (it only forwards the OpenAI-style ones), which surfaces
+ * here as a fetch error. Probed live so it starts working once the route is
+ * opened, without an installer update.
+ */
+export async function probeGeminiApi(
+  geminiRoot: string,
+  apiKey: string,
+  fetchImpl: FetchLike = globalThis.fetch as unknown as FetchLike,
+  timeoutMs = 8_000
+): Promise<boolean> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    await fetchImpl(`${geminiRoot.replace(/\/+$/, '')}/v1beta/models`, {
+      headers: { 'x-goog-api-key': apiKey },
+      signal: controller.signal
+    })
+    return true
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function checkGatewayReachable(
   provider: ResolvedProvider,
   apiKey: string,

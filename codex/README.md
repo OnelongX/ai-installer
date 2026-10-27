@@ -134,6 +134,7 @@ codex
 - **Gemini CLI**：合并写入 `~/.gemini/settings.json`（`security.auth.selectedType = "gemini-api-key"`、`model.name`），写 `GEMINI_API_KEY` 与 `GOOGLE_GEMINI_BASE_URL`
 - 改之前都会备份为 `*.bak-installer-<时间>`；Key 用 Windows DPAPI 加密保存在本机
 - 未装 Gemini CLI 也能先写好配置，之后 `npm i -g @google/gemini-cli` 即可直接用
+- **Gemini 目前只能走 SolaEon 内网**：外网网关没有开放 Gemini 接口（`/v1beta`）。切换前会先探测，不支持时只跳过 Gemini（不改文件），Codex 照常切换
 
 ---
 
@@ -146,14 +147,12 @@ personality = "pragmatic"
 model = "gpt-5.5"
 model_provider = "cm"
 model_catalog_json = 'C:\Users\<你>\.codex\models-catalog.json'
-preferred_auth_method = "apikey"
 forced_login_method = "api"
 review_model = "gpt-5.5"
 model_reasoning_effort = "high"
 plan_mode_reasoning_effort = "xhigh"
 model_reasoning_summary = "detailed"
 model_verbosity = "medium"
-model_supports_reasoning_summaries = true
 approval_policy = "on-request"
 allow_login_shell = true
 sandbox_mode = "workspace-write"
@@ -163,12 +162,8 @@ mcp_oauth_credentials_store = "auto"
 check_for_update_on_startup = true
 web_search = "live"
 approvals_reviewer = "user"
-service_tier = "fast"
 
 [model_providers.cm]
-approval_policy = "on-request"
-sandbox_mode = "workspace-write"
-web_search = "live"
 name = "Solaeon"
 base_url = "http://192.168.1.101:48760"
 wire_api = "responses"
@@ -178,7 +173,7 @@ env_key = "OPENAI_API_KEY"
 conversationDetailMode = "STEPS_COMMANDS"
 ```
 
-`base_url` 按「模型服务地址」变化：内网 `http://192.168.1.101:48760`，外网 `https://ai-api.solaeon.com`。重装或切换网关只改上面这些键，文件里其他配置（MCP、插件、项目信任等）都会保留，原文件先备份。想换模型 / 网关，用「切换网关」或直接改这个文件。
+`base_url` 按「模型服务地址」变化：内网 `http://192.168.1.101:48760`，外网 `https://ai-api.solaeon.com`。安装器只在点「开始安装」后才写这个文件（打开安装器、做环境检测都不会写）。安装时写上面全部键；**切换网关只改网关相关的几项**（`model` / `review_model` / `model_provider` / `model_catalog_json` / `forced_login_method` / `[model_providers.cm]` / `[desktop].conversationDetailMode`），推理强度、沙箱、审批策略等个人设置保持不变。文件里其他配置（MCP、插件、项目信任等）都会保留，原文件先备份。
 
 ---
 

@@ -241,6 +241,11 @@ export function GatewaySwitchView({
               </label>
             ))}
           </div>
+          {targets.includes('gemini') ? (
+            <p style={{ ...muted, fontSize: '0.85rem' }}>
+              Gemini CLI 需要网关开放 Gemini 接口：目前 SolaEon 只有内网支持。切换前会先探测，网关不支持时只跳过 Gemini，Codex 照常切换。
+            </p>
+          ) : null}
           {state && !state.geminiInstalled && targets.includes('gemini') ? (
             <p style={{ ...muted, fontSize: '0.85rem' }}>
               未检测到 gemini 命令：仍会写好配置，装上 Gemini CLI（npm i -g @google/gemini-cli）后即可直接使用。

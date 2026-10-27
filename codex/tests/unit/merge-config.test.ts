@@ -122,8 +122,9 @@ describe('config.toml merge', () => {
 
     expect(merged).toContain('model = "gpt-5.5"')
     expect(merged).not.toContain('gpt-6.1-sol')
-    expect(merged).toContain('service_tier = "fast"')
-    expect(merged).not.toContain('service_tier = "priority"')
+    // service_tier is the user's choice; the installer no longer writes one
+    expect(merged).toContain('service_tier = "priority"')
+    expect(merged.match(/^service_tier = /gm)).toHaveLength(1)
     expect(merged).toContain('conversationDetailMode = "STEPS_COMMANDS"')
     expect(merged).not.toContain('STEPS_PROSE')
     expect(merged).not.toContain('old.example')

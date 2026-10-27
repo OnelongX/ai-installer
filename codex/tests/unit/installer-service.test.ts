@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createInstallerService } from '../../src/main/installer/service'
 
 describe('installer service', () => {
-  it('creates config.toml during environment loading when it is missing', async () => {
+  it('only detects config.toml during environment loading, never writes it', async () => {
     const writes: Array<{ path: string; value: string }> = []
     const service = createInstallerService({
       exec: async () => ({
@@ -21,8 +21,8 @@ describe('installer service', () => {
 
     const environment = await service.loadEnvironment()
 
-    expect(environment.some((item) => item.id === 'config' && item.status === 'satisfied')).toBe(true)
-    expect(writes[0]?.path).toContain('.codex\\config.toml')
+    expect(environment.find((item) => item.id === 'config')?.status).toBe('auto-fixable')
+    expect(writes).toEqual([])
   })
 
   it('runs the plan and returns an execution summary', async () => {

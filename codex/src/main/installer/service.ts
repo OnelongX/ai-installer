@@ -32,7 +32,7 @@ import {
 import { maskKey, type GatewayProfileStore } from './gateway-profiles'
 import { buildInstallPlan } from './plan'
 import { buildModelCatalog } from '../../shared/model-catalog'
-import { checkGatewayReachable, fetchGatewayModels } from './tasks/detect-gateway'
+import { checkGatewayReachable, fetchGatewayModels, probeGeminiApi } from './tasks/detect-gateway'
 import { createConfigDetectionItem } from './tasks/detect-config'
 import { probeSolaeonInternal } from './tasks/detect-network'
 import { detectCodex } from './tasks/detect-codex'
@@ -48,7 +48,7 @@ import {
 import { buildPersistApiKeyCommand } from './tasks/persist-api-key.windows'
 import {
   buildConfigToml,
-  ensureConfigToml,
+  buildGatewayConfigToml,
   getConfigBackupPath,
   getConfigTomlPath,
   getModelCatalogPath,
@@ -164,15 +164,23 @@ export function createInstallerService(deps: InstallerServiceDeps) {
 
   // Merge the installer-owned keys into config.toml (mcp_servers / plugins /
   // projects / desktop prefs are kept) and rebuild models-catalog.json from the
-  // live /v1/models list + EXTRA_MODELS. Shared by the install run and 切换网关.
-  async function writeCodexConfig(provider: ResolvedProvider, model: string | undefined, apiKey: string) {
+  // live /v1/models list + EXTRA_MODELS. Shared by the install run ('full':
+  // gateway + default preferences) and 切换网关 ('gateway': gateway keys only,
+  // so the user's reasoning effort / sandbox / approval settings survive).
+  async function writeCodexConfig(
+    provider: ResolvedProvider,
+    model: string | undefined,
+    apiKey: string,
+    scope: 'full' | 'gateway'
+  ) {
     const configPath = getConfigTomlPath(deps.userProfile)
     const catalogPath = getModelCatalogPath(deps.userProfile)
     const existing = (await deps.readFile?.(configPath)) ?? null
+    const render = scope === 'full' ? buildConfigToml : buildGatewayConfigToml
     const backupPath = await writeWithBackup(
       configPath,
       existing,
-      mergeInstallerConfig(buildConfigToml({ provider, model, catalogPath }), existing)
+      mergeInstallerConfig(render({ provider, model, catalogPath }), existing)
     )
 
     const gatewayModels = await fetchGatewayModels(provider, apiKey)
@@ -196,7 +204,7 @@ export function createInstallerService(deps: InstallerServiceDeps) {
   }
 
   async function switchCodex(provider: ResolvedProvider, model: string, apiKey: string) {
-    const written = await writeCodexConfig(provider, model, apiKey)
+    const written = await writeCodexConfig(provider, model, apiKey, 'gateway')
     const persisted = await runPowerShell(buildPersistApiKeyCommand(apiKey))
     if (persisted.exitCode !== 0) {
       throw new Error(persisted.stderr || 'OPENAI_API_KEY 写入失败')
@@ -216,6 +224,18 @@ export function createInstallerService(deps: InstallerServiceDeps) {
     if (!deps.readFile) {
       throw new Error('无法读取 Gemini 配置')
     }
+    // Check the gateway actually serves the Gemini API before touching anything:
+    // writing settings + env vars for a gateway that can't answer would leave
+    // Gemini CLI retrying "fetch failed" forever.
+    const baseUrl = geminiBaseUrl(provider.baseUrl)
+    if (!(await probeGeminiApi(baseUrl, apiKey))) {
+      throw new Error(
+        provider.network === 'external'
+          ? `SolaEon 外网网关（${baseUrl}）目前没有开放 Gemini 接口（/v1beta），Gemini CLI 未做修改。请在公司内网用「Solaeon · 内网」或「Solaeon · 自动」切换，或联系网关管理员开放外网 Gemini 接口。`
+          : `网关 ${baseUrl} 的 Gemini 接口（/v1beta）连不上，Gemini CLI 未做修改。`
+      )
+    }
+
     const settingsPath = getGeminiSettingsPath(deps.userProfile)
     const existing = await deps.readFile(settingsPath)
     let merged: string
@@ -227,7 +247,6 @@ export function createInstallerService(deps: InstallerServiceDeps) {
     }
     const backupPath = await writeWithBackup(settingsPath, existing, merged)
 
-    const baseUrl = geminiBaseUrl(provider.baseUrl)
     const persisted = await runPowerShell(buildPersistGeminiEnvCommand(apiKey, baseUrl))
     if (persisted.exitCode !== 0) {
       throw new Error(persisted.stderr || 'GEMINI_API_KEY 写入失败')
@@ -326,21 +345,16 @@ export function createInstallerService(deps: InstallerServiceDeps) {
     },
 
     async loadEnvironment(): Promise<DetectionItemData[]> {
-      const configBootstrap = await ensureConfigToml({
-        fileExists: deps.fileExists,
-        mkdir: deps.mkdir,
-        userProfile: deps.userProfile,
-        writeFile: deps.writeFile
-      })
+      // Detection only looks; config.toml is written by the write-config task.
+      const configPath = getConfigTomlPath(deps.userProfile)
 
       return [
         await detectSystem(),
         await detectNode(),
         await detectCodex(),
         createConfigDetectionItem({
-          configPath: configBootstrap.path,
-          created: configBootstrap.created,
-          exists: true
+          configPath,
+          exists: await deps.fileExists(configPath)
         })
       ]
     },
@@ -615,7 +629,12 @@ export function createInstallerService(deps: InstallerServiceDeps) {
                 taskId: task,
                 type: 'task-output'
               })
-              const written = await writeCodexConfig(resolvedProvider, input.model, input.apiKey)
+              const written = await writeCodexConfig(
+                resolvedProvider,
+                input.model,
+                input.apiKey,
+                'full'
+              )
               if (written.backupPath) {
                 await emitLog({
                   level: 'info',

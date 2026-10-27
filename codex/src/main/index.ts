@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url'
 import { detectWindowsDesktopApp } from '../main/desktop-app/windows'
 import { createGatewayProfileStore } from '../main/installer/gateway-profiles'
 import { createInstallSessionController } from '../main/installer/session-controller'
-import { ensureConfigToml } from '../main/installer/tasks/write-config.windows'
 import { getPreloadScriptPath } from '../main/preload-path'
 import { createSmokeTestReport, getSmokeTestOutputPath } from '../main/smoke-test'
 import { runCommand } from '../main/system/exec'
@@ -261,28 +260,10 @@ function registerInstallerIpc() {
   ipcMain.handle(ipcChannels.validateApiKey, (_event, input) => controller.validateApiKey(input))
 }
 
-async function ensureDefaultInstallerConfig() {
-  const userProfile = process.env.USERPROFILE ?? app.getPath('home')
-
-  await ensureConfigToml({
-    fileExists: async (targetPath) => {
-      try {
-        await fs.access(targetPath)
-        return true
-      } catch {
-        return false
-      }
-    },
-    mkdir: async (targetPath) => {
-      await fs.mkdir(targetPath, { recursive: true })
-    },
-    userProfile,
-    writeFile: (targetPath, value) => fs.writeFile(targetPath, value, 'utf8')
-  })
-}
-
+// Nothing is written on launch: ~/.codex/config.toml (which forces API-key
+// login) is only touched by the install run's write-config task or 切换网关, so
+// merely opening the installer never logs a ChatGPT user out of Codex.
 app.whenReady().then(() => {
-  void ensureDefaultInstallerConfig()
   registerInstallerIpc()
   const window = createWindow()
   setupSmokeTest(window)

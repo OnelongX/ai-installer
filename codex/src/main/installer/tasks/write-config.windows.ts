@@ -1,7 +1,6 @@
 import path from 'node:path'
 
 import { DEFAULT_MODEL } from '../../../shared/models'
-import { buildModelCatalog } from '../../../shared/model-catalog'
 import {
   DEFAULT_PROVIDER,
   resolveProvider,
@@ -24,51 +23,32 @@ interface BuildConfigTomlOptions {
   catalogPath?: string
 }
 
-interface EnsureConfigTomlDeps {
-  fileExists(path: string): Promise<boolean>
-  mkdir(path: string): Promise<void>
-  userProfile: string
-  writeFile(path: string, value: string): Promise<void>
-}
-
 const DESKTOP_DETAIL_MODE_LINE = 'conversationDetailMode = "STEPS_COMMANDS"'
 const INSTALLER_PROVIDER_TABLE = 'model_providers.cm'
 
-function renderConfigToml(provider: ResolvedProvider, model: string, catalogPath?: string) {
+// Keys that decide which gateway Codex talks to and how it authenticates. This
+// is all 切换网关 writes; a switch must not reset the user's own preferences.
+function gatewayRootLines(model: string, catalogPath?: string) {
   return [
-    'personality = "pragmatic"',
     `model = "${model}"`,
     'model_provider = "cm"',
     // Point Codex at the generated catalog so its /model picker lists every
     // gateway model (GPT / Claude / DeepSeek / Kimi), not just OpenAI built-ins.
     // TOML literal string (single quotes) — no backslash escaping needed.
     ...(catalogPath ? [`model_catalog_json = '${catalogPath}'`] : []),
-    // Force API-key auth for the custom provider. Without these Codex falls back
-    // to ChatGPT login and never uses env_key (per DeepSeek's Codex doc). Needed
-    // for any api-key gateway (SolaEon / DeepSeek passthrough).
-    'preferred_auth_method = "apikey"',
+    // Force API-key auth for the custom provider. Without it Codex falls back to
+    // ChatGPT login and never uses env_key. (The older preferred_auth_method key
+    // is no longer recognised: Codex 0.15x warns that it "is ignored".)
     'forced_login_method = "api"',
-    `review_model = "${model}"`,
-    'model_reasoning_effort = "high"',
-    'plan_mode_reasoning_effort = "xhigh"',
-    'model_reasoning_summary = "detailed"',
-    'model_verbosity = "medium"',
-    'model_supports_reasoning_summaries = true',
-    'approval_policy = "on-request"',
-    'allow_login_shell = true',
-    'sandbox_mode = "workspace-write"',
-    'cli_auth_credentials_store = "file"',
-    'chatgpt_base_url = "https://chatgpt.com/backend-api/"',
-    'mcp_oauth_credentials_store = "auto"',
-    'check_for_update_on_startup = true',
-    'web_search = "live"',
-    'approvals_reviewer = "user"',
-    'service_tier = "fast"',
-    '',
+    `review_model = "${model}"`
+  ]
+}
+
+function gatewayTableLines(provider: ResolvedProvider) {
+  return [
+    // Only ModelProviderInfo fields: anything else here (approval_policy,
+    // sandbox_mode, …) makes Codex warn "is ignored" on every run.
     `[${INSTALLER_PROVIDER_TABLE}]`,
-    'approval_policy = "on-request"',
-    'sandbox_mode = "workspace-write"',
-    'web_search = "live"',
     `name = "${provider.name}"`,
     `base_url = "${provider.baseUrl}"`,
     'wire_api = "responses"',
@@ -78,6 +58,59 @@ function renderConfigToml(provider: ResolvedProvider, model: string, catalogPath
     // Codex desktop's STEPS_PROSE / Work mode requires a signed-in ChatGPT
     // account and blocks sends for api-key users; pin the commands view.
     DESKTOP_DETAIL_MODE_LINE
+  ]
+}
+
+// Defaults written on a fresh install only. No service_tier: "fast" maps to the
+// priority tier, which the gateway catalog doesn't advertise, so Codex warned
+// and dropped it — and it would override the user's own choice.
+const preferenceLines = [
+  'model_reasoning_effort = "high"',
+  'plan_mode_reasoning_effort = "xhigh"',
+  'model_reasoning_summary = "detailed"',
+  'model_verbosity = "medium"',
+  'approval_policy = "on-request"',
+  'allow_login_shell = true',
+  'sandbox_mode = "workspace-write"',
+  'cli_auth_credentials_store = "file"',
+  'chatgpt_base_url = "https://chatgpt.com/backend-api/"',
+  'mcp_oauth_credentials_store = "auto"',
+  'check_for_update_on_startup = true',
+  'web_search = "live"',
+  'approvals_reviewer = "user"'
+]
+
+function renderConfigToml(provider: ResolvedProvider, model: string, catalogPath?: string) {
+  return [
+    'personality = "pragmatic"',
+    ...gatewayRootLines(model, catalogPath),
+    ...preferenceLines,
+    '',
+    ...gatewayTableLines(provider)
+  ].join('\n')
+}
+
+function resolveOptions(options: BuildConfigTomlOptions) {
+  return (
+    options.provider ??
+    resolveProvider(
+      options.providerId ?? DEFAULT_PROVIDER,
+      options.networkMode ?? 'auto',
+      options.internalReachable ?? false
+    )
+  )
+}
+
+/**
+ * Only the gateway-related keys, for 切换网关: merged into the existing file
+ * this changes the gateway / key / model and leaves reasoning effort, sandbox,
+ * approval policy, personality etc. exactly as the user set them.
+ */
+export function buildGatewayConfigToml(options: BuildConfigTomlOptions = {}) {
+  return [
+    ...gatewayRootLines(options.model ?? DEFAULT_MODEL, options.catalogPath),
+    '',
+    ...gatewayTableLines(resolveOptions(options))
   ].join('\n')
 }
 
@@ -95,15 +128,7 @@ export function getConfigBackupPath(configPath: string, now = new Date()) {
 }
 
 export function buildConfigToml(options: BuildConfigTomlOptions = {}) {
-  const provider =
-    options.provider ??
-    resolveProvider(
-      options.providerId ?? DEFAULT_PROVIDER,
-      options.networkMode ?? 'auto',
-      options.internalReachable ?? false
-    )
-
-  return renderConfigToml(provider, options.model ?? DEFAULT_MODEL, options.catalogPath)
+  return renderConfigToml(resolveOptions(options), options.model ?? DEFAULT_MODEL, options.catalogPath)
 }
 
 export function getConfigTomlPath(userProfile: string) {
@@ -112,32 +137,4 @@ export function getConfigTomlPath(userProfile: string) {
 
 export function getModelCatalogPath(userProfile: string) {
   return path.join(userProfile, '.codex', 'models-catalog.json')
-}
-
-export async function ensureConfigToml(deps: EnsureConfigTomlDeps) {
-  const configPath = getConfigTomlPath(deps.userProfile)
-
-  if (await deps.fileExists(configPath)) {
-    return {
-      created: false,
-      path: configPath
-    }
-  }
-
-  const catalogPath = getModelCatalogPath(deps.userProfile)
-  await deps.mkdir(path.dirname(configPath))
-  // Bootstrap default is the SolaEon gateway (WAN, no LAN probe); the real install run
-  // (service.startInstall) rewrites this with the user's chosen provider.
-  await deps.writeFile(configPath, buildConfigToml({ catalogPath }))
-  // Write an offline catalog (EXTRA_MODELS only) so config.toml never points at
-  // a missing file; the install run enriches it with the gateway's live list.
-  await deps.writeFile(
-    catalogPath,
-    JSON.stringify(buildModelCatalog([]), null, 2)
-  )
-
-  return {
-    created: true,
-    path: configPath
-  }
 }

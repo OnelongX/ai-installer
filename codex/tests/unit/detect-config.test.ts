@@ -13,14 +13,16 @@ describe('config detection', () => {
     expect(classifyConfigState(false)).toBe('auto-fixable')
   })
 
-  it('describes an auto-generated config file in Chinese', () => {
-    const item = createConfigDetectionItem({
-      configPath: 'C:\\Users\\Administrator\\.codex\\config.toml',
-      created: true,
-      exists: true
+  it('describes found and missing config files in Chinese', () => {
+    const configPath = 'C:\Users\Administrator\.codex\config.toml'
+    expect(createConfigDetectionItem({ configPath, exists: true })).toMatchObject({
+      title: 'Codex 配置',
+      status: 'satisfied',
+      detail: `已检测到 ${configPath}`
     })
-
-    expect(item.title).toBe('Codex 配置')
-    expect(item.detail).toBe('已自动生成 C:\\Users\\Administrator\\.codex\\config.toml')
+    expect(createConfigDetectionItem({ configPath, exists: false })).toMatchObject({
+      status: 'auto-fixable',
+      detail: '未检测到 config.toml，将在安装时写入'
+    })
   })
 })

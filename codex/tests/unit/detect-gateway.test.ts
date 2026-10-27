@@ -6,8 +6,29 @@ import {
   checkGatewayReachable,
   fetchGatewayModelIds,
   fetchGatewayModels,
-  modelsEndpoint
+  modelsEndpoint,
+  probeGeminiApi
 } from '../../src/main/installer/tasks/detect-gateway'
+
+describe('gemini api probe', () => {
+  it('treats any HTTP answer (even 403) as "route served"', async () => {
+    const seen: string[] = []
+    const ok = await probeGeminiApi('http://192.168.1.101:48760/', 'sk-x', async (url, init) => {
+      seen.push(`${url} ${init.headers['x-goog-api-key']}`)
+      return { ok: false, status: 403, text: async () => 'invalid api key' }
+    })
+    expect(ok).toBe(true)
+    expect(seen).toEqual(['http://192.168.1.101:48760/v1beta/models sk-x'])
+  })
+
+  it('treats a dropped connection as "no Gemini API"', async () => {
+    expect(
+      await probeGeminiApi('https://ai-api.solaeon.com', 'sk-x', async () => {
+        throw new TypeError('fetch failed')
+      })
+    ).toBe(false)
+  })
+})
 
 describe('codex detect-gateway', () => {
   it('normalizes base_url to {root}/v1/models', () => {
