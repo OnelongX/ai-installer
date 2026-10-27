@@ -31,6 +31,9 @@ interface InstallSessionControllerDeps {
   mkdir(path: string): Promise<void>
   platform: string
   profiles?: GatewayProfileStore
+  /** encrypt the API key before it is written to the session file */
+  protectSecret?(plain: string): string
+  revealSecret?(cipher: string): string
   readFile?(path: string): Promise<string | null>
   saveSession(serialized: string): Promise<void>
   userProfile: string
@@ -46,6 +49,15 @@ interface InstallSessionState {
   request?: StartInstallRequest
   summary: string
   updatedAt?: string
+}
+
+/** StartInstallRequest as written to disk: the key only ever as a cipher. */
+type StoredRequest = Omit<StartInstallRequest, 'apiKey'> & {
+  apiKeyCipher?: string
+  /** whether the request had a key at all (the "existing key" mode has none) */
+  hasApiKey?: boolean
+  /** plain key written by sessions before the key was encrypted */
+  apiKey?: string
 }
 
 function createDefaultState(): InstallSessionState {
@@ -91,12 +103,24 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
           state.failedTaskId = parsed.failedTaskId
           state.lastFailureAt = parsed.lastFailureAt
           state.logs = Array.isArray(parsed.logs) ? parsed.logs : []
-          state.request = parsed.request
+          const restored = restoreRequest(parsed.request as StoredRequest | undefined)
+          if (restored === 'unrecoverable') {
+            // The key can't be decrypted (e.g. another Windows user's file):
+            // resuming would run persist / write-config with an empty key.
+            Object.assign(state, createDefaultState())
+            await deps.clearSession()
+            return
+          }
+          state.request = restored
           state.summary =
             typeof parsed.summary === 'string'
               ? parsed.summary
               : '已恢复上一次安装会话。'
           state.updatedAt = parsed.updatedAt
+          if (typeof (parsed.request as StoredRequest | undefined)?.apiKey === 'string') {
+            // Rewrite a file that still holds a plain key in the encrypted form.
+            await persistState()
+          }
         } catch {
           await deps.clearSession()
         }
@@ -120,11 +144,48 @@ export function createInstallSessionController(deps: InstallSessionControllerDep
         failedTaskId: state.failedTaskId,
         lastFailureAt: state.lastFailureAt,
         logs: state.logs,
-        request: state.request,
+        request: toStoredRequest(state.request),
         summary: state.summary,
         updatedAt: state.updatedAt
       })
     )
+  }
+
+  // The session file lives in %APPDATA% and outlives a failed install, so the
+  // API key is never written in plain text: it is encrypted with protectSecret
+  // (DPAPI via safeStorage) or, if that isn't available, left out — in which
+  // case the session can't be resumed after a restart.
+  function toStoredRequest(request: StartInstallRequest): StoredRequest {
+    const { apiKey, ...rest } = request
+    if (!apiKey) {
+      return { ...rest, hasApiKey: false }
+    }
+    let apiKeyCipher: string | undefined
+    try {
+      apiKeyCipher = deps.protectSecret?.(apiKey)
+    } catch {
+      apiKeyCipher = undefined
+    }
+    return { ...rest, apiKeyCipher, hasApiKey: true }
+  }
+
+  function restoreRequest(stored: StoredRequest | undefined): StartInstallRequest | 'unrecoverable' | undefined {
+    if (!stored) {
+      return undefined
+    }
+    const { apiKeyCipher, hasApiKey, apiKey: legacyPlainKey, ...rest } = stored
+    let apiKey = typeof legacyPlainKey === 'string' ? legacyPlainKey : ''
+    if (apiKeyCipher) {
+      try {
+        apiKey = deps.revealSecret?.(apiKeyCipher) ?? ''
+      } catch {
+        apiKey = ''
+      }
+    }
+    if ((hasApiKey || apiKeyCipher) && !apiKey) {
+      return 'unrecoverable'
+    }
+    return { ...rest, apiKey }
   }
 
   async function resetSession(request: StartInstallRequest) {

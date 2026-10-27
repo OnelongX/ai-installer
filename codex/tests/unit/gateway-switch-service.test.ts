@@ -6,8 +6,8 @@ import { createGatewayProfileStore } from '../../src/main/installer/gateway-prof
 import { createInstallerService } from '../../src/main/installer/service'
 
 const userProfile = 'C:\\Users\\Tester'
-const codexConfig = path.join(userProfile, '.codex', 'config.toml')
-const geminiSettings = path.join(userProfile, '.gemini', 'settings.json')
+const codexConfig = path.win32.join(userProfile, '.codex', 'config.toml')
+const geminiSettings = path.win32.join(userProfile, '.gemini', 'settings.json')
 
 const envKeys = ['OPENAI_API_KEY', 'GEMINI_API_KEY', 'GOOGLE_GEMINI_BASE_URL'] as const
 let savedEnv: Record<string, string | undefined>

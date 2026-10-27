@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  codexAppxPackageName,
   codexDesktopDownloadUrl,
   detectWindowsDesktopApp,
+  getDesktopAppLaunchCommand,
   getWindowsDesktopAppCandidates
 } from '../../src/main/desktop-app/windows'
 
@@ -51,6 +53,50 @@ describe('windows desktop app detection', () => {
 
     expect(result.installed).toBe(true)
     expect(result.launchPath).toBe(`${installLocation}\\Codex.exe`)
+  })
+
+  it('detects the Microsoft Store / MSIX build via Get-AppxPackage', async () => {
+    const calls: Array<{ command: string; args?: string[] }> = []
+
+    const result = await detectWindowsDesktopApp({
+      exec: async (command, args) => {
+        calls.push({ command, args })
+        return command === 'powershell'
+          ? { exitCode: 0, stderr: '', stdout: 'OpenAI.Codex_2p2nqsd0c76g0!App\r\n' }
+          : { exitCode: 1, stderr: 'not found', stdout: '' }
+      },
+      fileExists: async () => false,
+      localAppData: 'C:\\Users\\Administrator\\AppData\\Local'
+    })
+
+    expect(result).toMatchObject({
+      installed: true,
+      launchPath: 'shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App',
+      statusMessage: '已检测到 Codex 桌面版（Microsoft Store / MSIX 安装）'
+    })
+    expect(calls[0]?.command).toBe('powershell')
+    expect(calls[0]?.args?.at(-1)).toContain(`Get-AppxPackage -Name '${codexAppxPackageName}'`)
+  })
+
+  it('ignores noise in the Get-AppxPackage output', async () => {
+    const result = await detectWindowsDesktopApp({
+      exec: async (command) => ({
+        exitCode: 0,
+        stderr: '',
+        stdout: command === 'powershell' ? 'WARNING: something\r\n' : ''
+      }),
+      fileExists: async () => false
+    })
+
+    expect(result.installed).toBe(false)
+  })
+
+  it('launches MSIX installs through explorer shell:AppsFolder, others via openPath', () => {
+    expect(getDesktopAppLaunchCommand('shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App')).toEqual({
+      command: 'explorer.exe',
+      args: ['shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App']
+    })
+    expect(getDesktopAppLaunchCommand('C:\\Program Files\\Codex\\Codex.exe')).toBeNull()
   })
 
   it('returns the official install guidance when the app is missing', async () => {

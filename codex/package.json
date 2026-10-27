@@ -2,7 +2,7 @@
   "name": "codex-installer",
   "version": "0.1.29",
   "description": "用于安装、恢复和验证 Codex 的桌面安装中心。",
-  "author": "OpenAI",
+  "author": "SolaEon",
   "private": true,
   "type": "module",
   "main": "out/main/index.js",

@@ -1,4 +1,6 @@
-import path from 'node:path'
+// Windows-only module: always build Windows paths, so behaviour (and the unit
+// tests, which CI runs on Linux) is the same on every OS.
+import { win32 as path } from 'node:path'
 
 import type {
   DetectionItemData,

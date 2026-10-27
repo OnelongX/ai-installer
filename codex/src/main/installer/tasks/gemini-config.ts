@@ -1,4 +1,6 @@
-import path from 'node:path'
+// Windows-only module: always build Windows paths, so behaviour (and the unit
+// tests, which CI runs on Linux) is the same on every OS.
+import { win32 as path } from 'node:path'
 
 // Gemini CLI (0.6x) reads ~/.gemini/settings.json in its nested "v2" shape:
 //   { "security": { "auth": { "selectedType": "gemini-api-key" } },

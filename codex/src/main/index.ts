@@ -1,9 +1,10 @@
 import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron'
+import { spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { detectWindowsDesktopApp } from '../main/desktop-app/windows'
+import { detectWindowsDesktopApp, getDesktopAppLaunchCommand } from '../main/desktop-app/windows'
 import { createGatewayProfileStore } from '../main/installer/gateway-profiles'
 import { createInstallSessionController } from '../main/installer/session-controller'
 import { getPreloadScriptPath } from '../main/preload-path'
@@ -119,6 +120,8 @@ function setupSmokeTest(window: BrowserWindow) {
 async function getDesktopAppState() {
   if (process.platform === 'win32') {
     return detectWindowsDesktopApp({
+      // Needed for the MSIX (Get-AppxPackage) and uninstall-registry probes.
+      exec: (command, args) => runCommand(command, args, 15_000),
       fileExists: async (targetPath) => {
         try {
           await fs.access(targetPath)
@@ -152,6 +155,15 @@ function registerInstallerIpc() {
       return null
     }
   }
+  // API keys at rest (saved gateways, the resumable session) are DPAPI-encrypted
+  // for the current Windows user.
+  const encryptSecret = (plain: string) => {
+    if (!safeStorage.isEncryptionAvailable()) {
+      throw new Error('系统加密存储不可用，无法安全保存 API Key')
+    }
+    return safeStorage.encryptString(plain).toString('base64')
+  }
+  const decryptSecret = (cipher: string) => safeStorage.decryptString(Buffer.from(cipher, 'base64'))
   const profiles = createGatewayProfileStore({
     filePath: path.join(app.getPath('userData'), 'gateway-profiles.json'),
     mkdir: async (targetPath) => {
@@ -159,14 +171,8 @@ function registerInstallerIpc() {
     },
     readFile: readFileOrNull,
     writeFile: (targetPath, value) => fs.writeFile(targetPath, value, 'utf8'),
-    // Keys at rest are DPAPI-encrypted for the current Windows user.
-    encrypt: (plain) => {
-      if (!safeStorage.isEncryptionAvailable()) {
-        throw new Error('系统加密存储不可用，无法安全保存 API Key')
-      }
-      return safeStorage.encryptString(plain).toString('base64')
-    },
-    decrypt: (cipher) => safeStorage.decryptString(Buffer.from(cipher, 'base64'))
+    encrypt: encryptSecret,
+    decrypt: decryptSecret
   })
   const controller = createInstallSessionController({
     appVersion: app.getVersion(),
@@ -194,6 +200,8 @@ function registerInstallerIpc() {
     },
     platform: process.platform,
     profiles,
+    protectSecret: encryptSecret,
+    revealSecret: decryptSecret,
     readFile: readFileOrNull,
     saveSession: (serialized) => fs.writeFile(sessionPath, serialized, 'utf8'),
     userProfile,
@@ -227,6 +235,24 @@ function registerInstallerIpc() {
 
     if (!state.installed || !state.launchPath) {
       return false
+    }
+
+    const launch = getDesktopAppLaunchCommand(state.launchPath)
+    if (launch) {
+      // explorer.exe exits non-zero even when it launched the app, so don't
+      // wait on it; a spawn failure is the only thing worth reporting.
+      return new Promise<boolean>((resolve) => {
+        const child = spawn(launch.command, launch.args, {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true
+        })
+        child.once('error', () => resolve(false))
+        child.once('spawn', () => {
+          child.unref()
+          resolve(true)
+        })
+      })
     }
 
     const result = await shell.openPath(state.launchPath)
