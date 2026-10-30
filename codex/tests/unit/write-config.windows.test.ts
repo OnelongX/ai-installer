@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildConfigToml,
   buildGatewayConfigToml,
+  getCatalogWiring,
   getConfigBackupPath,
   mergeInstallerConfig
 } from '../../src/main/installer/tasks/write-config.windows'
@@ -246,6 +247,28 @@ describe('windows config generation', () => {
       'env_key'
     ])
     expect(buildConfigToml()).not.toContain('service_tier')
+  })
+
+  it('tells whether config.toml routes Codex through the installer catalog', () => {
+    const catalog = 'C:\\Users\\A\\.codex\\models-catalog.json'
+    expect(getCatalogWiring(null, catalog)).toBe('no-gateway')
+    expect(getCatalogWiring('model = "gpt-6.1-sol"', catalog)).toBe('no-gateway')
+    expect(getCatalogWiring('model_provider = "openai"', catalog)).toBe('no-gateway')
+    expect(getCatalogWiring('model_provider = "cm"', catalog)).toBe('no-catalog')
+    // literal and basic strings, any case / separator style
+    expect(getCatalogWiring(`model_provider = "cm"\nmodel_catalog_json = '${catalog}'`, catalog)).toBe('wired')
+    expect(
+      getCatalogWiring(
+        'model_provider = "cm"\nmodel_catalog_json = "c:\\\\users\\\\a\\\\.codex\\\\MODELS-CATALOG.json"',
+        catalog
+      )
+    ).toBe('wired')
+    // a model_catalog_json inside some other table doesn't count
+    expect(
+      getCatalogWiring(`model_provider = "cm"\n\n[profiles.x]\nmodel_catalog_json = '${catalog}'`, catalog)
+    ).toBe('no-catalog')
+    // what the installer itself writes is wired
+    expect(getCatalogWiring(buildConfigToml({ catalogPath: catalog }), catalog)).toBe('wired')
   })
 
   it('writes no keys that current Codex reports as "is ignored"', () => {

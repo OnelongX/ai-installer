@@ -223,6 +223,64 @@ describe('切换网关 service', () => {
     expect(disk.has(codexConfig)).toBe(false)
   })
 
+  describe('更新模型目录 (syncModels)', () => {
+    const catalogPath = path.win32.join(userProfile, '.codex', 'models-catalog.json')
+
+    it('does nothing and says why when Codex is on ChatGPT login (no gateway in config.toml)', async () => {
+      const { disk, service } = setup({ [codexConfig]: 'model = "gpt-6.1-sol"\nservice_tier = "priority"\n' })
+
+      const result = await service.syncModels({ apiKey: 'sk-switch-test-9999' })
+
+      expect(result).toMatchObject({ ok: false, notWired: true })
+      expect(result.message).toContain('没有接入 SolaEon 网关')
+      expect(disk.has(catalogPath)).toBe(false)
+    })
+
+    it('does nothing when config.toml uses the gateway but points at another catalog', async () => {
+      const { disk, service } = setup({
+        [codexConfig]: "model_provider = \"cm\"\nmodel_catalog_json = 'D:\\elsewhere\\models.json'\n"
+      })
+
+      const result = await service.syncModels({ apiKey: 'sk-switch-test-9999' })
+
+      expect(result).toMatchObject({ ok: false, notWired: true })
+      expect(result.message).toContain('model_catalog_json')
+      expect(disk.has(catalogPath)).toBe(false)
+    })
+
+    it('refreshes the catalog with a saved gateway key once Codex is switched to the gateway', async () => {
+      const { disk, service } = setup()
+      await service.saveGatewayProfile(profileInput)
+      await service.switchGateway({ profileId: 'p1', targets: ['codex'] })
+      const fetchMock = vi.fn(async (url: string, init: { headers: Record<string, string> }) => ({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ models: [{ slug: 'gpt-6.1-sol' }, { slug: 'glm-5.3' }] }),
+        url,
+        init
+      }))
+      vi.stubGlobal('fetch', fetchMock)
+      delete process.env.OPENAI_API_KEY
+
+      const result = await service.syncModels({ profileId: 'p1' })
+
+      expect(result).toMatchObject({ ok: true, gatewayCount: 2 })
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://ai-api.solaeon.com/v1/models',
+        expect.objectContaining({ headers: { Authorization: 'Bearer sk-switch-test-9999' } })
+      )
+      const catalog = JSON.parse(disk.get(catalogPath)!)
+      expect(catalog.models.map((m: { slug: string }) => m.slug)).toContain('glm-5.3')
+    })
+
+    it('reports an unknown profile instead of throwing', async () => {
+      const { service } = setup({
+        [codexConfig]: `model_provider = "cm"\nmodel_catalog_json = '${catalogPath}'\n`
+      })
+      expect(await service.syncModels({ profileId: 'nope' })).toMatchObject({ ok: false })
+    })
+  })
+
   it('reports whether the gemini command is installed', async () => {
     const { service } = setup()
     expect(await service.listGatewayProfiles()).toEqual({ geminiInstalled: false, profiles: [] })

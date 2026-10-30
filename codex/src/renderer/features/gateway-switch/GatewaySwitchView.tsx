@@ -32,6 +32,10 @@ interface GatewaySwitchViewProps {
   onLoad: () => Promise<GatewayProfilesState>
   onSave: (input: SaveGatewayProfileRequest) => Promise<SaveGatewayProfileResult>
   onSwitch: (input: SwitchGatewayRequest) => Promise<SwitchGatewayResult>
+  /** refresh ~/.codex/models-catalog.json from this gateway, using its saved key */
+  onSyncCatalog?: (
+    profileId: string
+  ) => Promise<{ ok: boolean; count: number; gatewayCount?: number; message?: string }>
 }
 
 interface Draft {
@@ -111,7 +115,8 @@ export function GatewaySwitchView({
   onListModels,
   onLoad,
   onSave,
-  onSwitch
+  onSwitch,
+  onSyncCatalog
 }: GatewaySwitchViewProps) {
   const [state, setState] = useState<GatewayProfilesState | null>(null)
   const [targets, setTargets] = useState<SwitchTarget[]>(['codex', 'gemini'])
@@ -122,6 +127,10 @@ export function GatewaySwitchView({
   const [result, setResult] = useState<SwitchGatewayResult | null>(null)
   const [gatewayModels, setGatewayModels] = useState<GatewayModel[]>([])
   const [loadingModels, setLoadingModels] = useState(false)
+  const [syncingId, setSyncingId] = useState<string | null>(null)
+  const [catalogStatus, setCatalogStatus] = useState<{ profileId: string; ok: boolean; text: string } | null>(
+    null
+  )
 
   const reload = () => onLoad().then(setState)
 
@@ -191,6 +200,26 @@ export function GatewaySwitchView({
       await reload()
     } finally {
       setSwitchingId(null)
+    }
+  }
+
+  async function syncCatalog(profile: GatewayProfile) {
+    if (!onSyncCatalog) return
+    setSyncingId(profile.id)
+    setCatalogStatus(null)
+    try {
+      const synced = await onSyncCatalog(profile.id)
+      setCatalogStatus({
+        profileId: profile.id,
+        ok: synced.ok,
+        text: synced.ok
+          ? `✓ 已更新 Codex 模型目录：共 ${synced.count} 个模型（网关 ${synced.gatewayCount ?? 0} + 内置补充）。重开 Codex，/model 即可看到。`
+          : `✗ ${synced.message ?? '更新失败'}`
+      })
+    } catch {
+      setCatalogStatus({ profileId: profile.id, ok: false, text: '✗ 更新失败，请重试。' })
+    } finally {
+      setSyncingId(null)
     }
   }
 
@@ -290,6 +319,17 @@ export function GatewaySwitchView({
                 >
                   {busy ? '切换中…' : `切换到「${profile.name}」`}
                 </button>
+                {onSyncCatalog ? (
+                  <button
+                    type="button"
+                    disabled={syncingId === profile.id}
+                    onClick={() => void syncCatalog(profile)}
+                    title="用这个网关的 Key 重新拉取模型，写入 ~/.codex/models-catalog.json"
+                    style={pillButton('ghost', syncingId === profile.id)}
+                  >
+                    {syncingId === profile.id ? '更新中…' : '⬇ 更新模型目录'}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => {
@@ -311,6 +351,11 @@ export function GatewaySwitchView({
                   删除
                 </button>
               </div>
+              {catalogStatus?.profileId === profile.id ? (
+                <p role="status" style={{ ...muted, color: catalogStatus.ok ? '#34d399' : '#f87171' }}>
+                  {catalogStatus.text}
+                </p>
+              ) : null}
             </div>
           )
         })}

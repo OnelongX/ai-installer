@@ -11,6 +11,11 @@
 
 /** Ids that route through the gateway but /v1/models may not advertise. */
 export const EXTRA_MODELS: string[] = [
+  'gpt-6.1-sol',
+  'gpt-6.1-terra',
+  'gpt-6-astra',
+  'gpt-6-sol',
+  'gpt-6-luna',
   'gpt-5.6-sol',
   'gpt-5.6-terra',
   'gpt-5.6-luna',
@@ -58,19 +63,33 @@ export interface ModelCatalog {
   models: CatalogModel[]
 }
 
-// Lower = shown first, matching sync-models.py's PRIORITY_MAP.
+// Lower = shown first; first matching prefix wins, so exact slugs go before
+// their family. The GPT-6 / 6.1 / 5.6 order and the context windows below follow
+// Codex's own model list (models_cache.json, codex-cli 0.165).
 const PRIORITY_MAP: Array<[string, number]> = [
-  ['gpt-5.6', 1],
-  ['gpt-5', 2],
-  ['gpt-4', 3],
-  ['claude', 4],
-  ['deepseek-v4', 10],
-  ['deepseek-v3', 11],
-  ['deepseek', 12],
-  ['kimi', 13]
+  ['gpt-6.1-sol', 1],
+  ['gpt-6-astra', 2],
+  ['gpt-6.1-terra', 3],
+  ['gpt-6-sol', 4],
+  ['gpt-6-luna', 5],
+  ['gpt-6', 5],
+  ['gpt-5.6-sol', 6],
+  ['gpt-5.6-terra', 7],
+  ['gpt-5.6-luna', 8],
+  ['gpt-5.6', 9],
+  ['gpt-5', 10],
+  ['gpt-4', 11],
+  ['claude', 12],
+  ['deepseek-v4', 20],
+  ['deepseek-v3', 21],
+  ['deepseek', 22],
+  ['kimi', 23]
 ]
 
 const CONTEXT_WINDOW_MAP: Record<string, number> = {
+  // 'gpt-6.1' must stay ahead of 'gpt-6' for the prefix fallback.
+  'gpt-6.1': 500000,
+  'gpt-6': 272000,
   'gpt-5.6-sol': 272000,
   'gpt-5.6-terra': 272000,
   'gpt-5.6-luna': 272000,
@@ -88,6 +107,11 @@ const CONTEXT_WINDOW_MAP: Record<string, number> = {
 }
 
 const DISPLAY_NAME_MAP: Record<string, string> = {
+  'gpt-6.1-sol': 'GPT-6.1 Sol',
+  'gpt-6.1-terra': 'GPT-6.1 Terra',
+  'gpt-6-astra': 'GPT-6 Astra',
+  'gpt-6-sol': 'GPT-6 Sol',
+  'gpt-6-luna': 'GPT-6 Luna',
   'gpt-5.6-sol': 'GPT-5.6 Sol',
   'gpt-5.6-terra': 'GPT-5.6 Terra',
   'gpt-5.6-luna': 'GPT-5.6 Luna',
@@ -138,6 +162,12 @@ export function getDisplayName(modelId: string): string {
     const head = `Claude ${parts[0].charAt(0).toUpperCase()}${parts[0].slice(1)}`
     return parts.length > 1 ? `${head} ${parts.slice(1).join('-')}` : head
   }
+  // Newer GPT families the map doesn't know yet: gpt-7-nova -> GPT-7 Nova.
+  const gptVariant = /^gpt-(\d+(?:\.\d+)?)-([a-z]+)$/.exec(modelId)
+  if (gptVariant) {
+    const [, version, variant] = gptVariant
+    return `GPT-${version} ${variant.charAt(0).toUpperCase()}${variant.slice(1)}`
+  }
   // gpt-4o-2024-11-20 -> GPT-4O (2024-11-20)
   const parts = modelId.split('-')
   if (parts.length >= 2) {
@@ -149,6 +179,17 @@ export function getDisplayName(modelId: string): string {
 }
 
 function getReasoningLevels(modelId: string): CatalogReasoningLevel[] {
+  // GPT-6.x / 5.6 support xhigh (the installer already uses it for plan mode).
+  // Codex also offers max / ultra for them; left out until the gateway is known
+  // to pass those through.
+  if (/^gpt-(6|5\.6)/.test(modelId)) {
+    return [
+      { effort: 'low', description: '更快、推理更轻' },
+      { effort: 'medium', description: '速度与推理深度均衡' },
+      { effort: 'high', description: '更深的推理，适合复杂问题' },
+      { effort: 'xhigh', description: '最深的推理，适合最难的问题' }
+    ]
+  }
   const heavy = ['gpt-5', 'opus', 'deepseek-v4-pro', 'kimi']
   if (heavy.some((token) => modelId.includes(token))) {
     return [

@@ -35,12 +35,36 @@ describe('codex model catalog', () => {
     expect(slugs).toContain('gpt-5.5')
   })
 
-  it('sorts by priority (gpt-5.6 first, deepseek/kimi later)', () => {
-    const catalog = buildModelCatalog(['kimi-k3', 'gpt-5.6-sol', 'deepseek-v4-flash'])
-    const first = catalog.models[0].slug
-    expect(first.startsWith('gpt-5.6')).toBe(true)
+  it('sorts by priority (GPT-6.x as Codex orders them, then 5.6, deepseek/kimi later)', () => {
+    const catalog = buildModelCatalog(['kimi-k3', 'gpt-5.6-sol', 'deepseek-v4-flash', 'gpt-6-luna'])
+    expect(catalog.models.slice(0, 7).map((m) => m.slug)).toEqual([
+      'gpt-6.1-sol',
+      'gpt-6-astra',
+      'gpt-6.1-terra',
+      'gpt-6-sol',
+      'gpt-6-luna',
+      'gpt-5.6-sol',
+      'gpt-5.6-terra'
+    ])
     expect(getPriority('gpt-5.6-sol')).toBeLessThan(getPriority('deepseek-v4-flash'))
     expect(getPriority('deepseek-v4-flash')).toBeLessThan(getPriority('kimi-k3'))
+  })
+
+  it('describes the GPT-6 / 6.1 family like Codex does', () => {
+    const bySlug = Object.fromEntries(
+      buildModelCatalog([]).models.map((m) => [m.slug, m])
+    )
+    expect(bySlug['gpt-6.1-sol']).toMatchObject({ display_name: 'GPT-6.1 Sol', context_window: 500000 })
+    expect(bySlug['gpt-6.1-terra']).toMatchObject({ display_name: 'GPT-6.1 Terra', context_window: 500000 })
+    expect(bySlug['gpt-6-sol']).toMatchObject({ display_name: 'GPT-6 Sol', context_window: 272000 })
+    expect(bySlug['gpt-6.1-sol'].supported_reasoning_levels.map((l) => l.effort)).toEqual([
+      'low',
+      'medium',
+      'high',
+      'xhigh'
+    ])
+    // unknown future variants still get a readable name
+    expect(getDisplayName('gpt-7-nova')).toBe('GPT-7 Nova')
   })
 
   it('produces Codex catalog entries with the required fields', () => {

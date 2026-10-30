@@ -121,6 +121,13 @@ describe('install_codex.sh parity with the Windows installer', () => {
     expect(stdout).toBe(`3 ${buildModelCatalog(['claude-opus-4-8', 'gpt-5.5']).models.length}`)
   })
 
+  it('describes the GPT-6 family and unknown GPT variants the same way', async () => {
+    const ids = ['gpt-6.1-sol', 'gpt-6-luna', 'gpt-6.1-terra', 'gpt-7-nova', 'gpt-5.6-luna']
+    const base = await startGateway({ models: ids.map((slug) => ({ slug })) }, {})
+    const { catalog } = await runCatalogJs(base)
+    expect(catalog).toEqual(buildModelCatalog(ids))
+  })
+
   it('accepts the OpenAI {data:[{id}]} shape too', async () => {
     const base = await startGateway({ data: [{ id: 'deepseek-chat' }] }, {})
     const { catalog } = await runCatalogJs(base)

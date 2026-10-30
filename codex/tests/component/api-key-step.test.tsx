@@ -25,6 +25,18 @@ describe('api key step', () => {
     expect(screen.getByText(/安装时会自动探测内网是否可达/)).toBeInTheDocument()
   })
 
+  it('can refresh the model catalog with the already-detected key', async () => {
+    const onSyncModels = vi.fn(async () => ({ ok: true, count: 61, gatewayCount: 54, path: 'x' }))
+    render(<ApiKeyStep existingKeyMask="sk-***1234" canReuseExistingKey onSyncModels={onSyncModels} />)
+
+    const button = screen.getByRole('button', { name: '⬇ 更新 Codex 模型目录' })
+    expect(button).toBeEnabled()
+    fireEvent.click(button)
+
+    expect(onSyncModels).toHaveBeenCalledWith({ apiKey: undefined, provider: 'solaeon', networkMode: 'auto' })
+    expect(await screen.findByText(/已更新 Codex 模型目录：共 61 个模型/)).toBeInTheDocument()
+  })
+
   it('opens 切换网关 from the first screen', () => {
     const onOpenGatewaySwitch = vi.fn()
     render(<ApiKeyStep onOpenGatewaySwitch={onOpenGatewaySwitch} />)

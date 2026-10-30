@@ -269,6 +269,7 @@ export default function App({ installerClient }: AppProps) {
           onLoad={() => client.listGatewayProfiles()}
           onSave={(input) => client.saveGatewayProfile(input)}
           onSwitch={(input) => client.switchGateway(input)}
+          onSyncCatalog={(profileId) => client.syncModels({ profileId })}
         />
       </>
     )

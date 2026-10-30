@@ -307,15 +307,19 @@ fi
 step "生成模型目录 models-catalog.json"
 catalog_counts="$(CODEX_GATEWAY_KEY="$API_KEY" node - "$BASE_URL" "$catalog" <<'CATALOG_JS'
 const fs = require('fs')
-const EXTRA_MODELS = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.6', 'gpt-5.5', 'gpt-5.4',
-  'gpt-5.4-mini', 'gpt-5.3-codex', 'gpt-5.3-codex-spark', 'gpt-5.2', 'deepseek-v4-flash', 'deepseek-v4-pro', 'kimi-k3']
-const PRIORITY_MAP = [['gpt-5.6', 1], ['gpt-5', 2], ['gpt-4', 3], ['claude', 4], ['deepseek-v4', 10],
-  ['deepseek-v3', 11], ['deepseek', 12], ['kimi', 13]]
-const CONTEXT_WINDOW_MAP = { 'gpt-5.6-sol': 272000, 'gpt-5.6-terra': 272000, 'gpt-5.6-luna': 272000,
-  'gpt-5.6': 272000, 'gpt-5.5': 272000, 'gpt-5.4': 272000, 'gpt-4o': 128000, 'gpt-4o-mini': 128000,
-  'deepseek-v4-pro': 128000, 'deepseek-v4-flash': 128000, 'deepseek-chat': 64000, 'kimi-k3': 256000,
-  'claude-opus-4': 200000, 'claude-sonnet-4': 200000 }
-const DISPLAY_NAME_MAP = { 'gpt-5.6-sol': 'GPT-5.6 Sol', 'gpt-5.6-terra': 'GPT-5.6 Terra',
+const EXTRA_MODELS = ['gpt-6.1-sol', 'gpt-6.1-terra', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol',
+  'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.6', 'gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex',
+  'gpt-5.3-codex-spark', 'gpt-5.2', 'deepseek-v4-flash', 'deepseek-v4-pro', 'kimi-k3']
+const PRIORITY_MAP = [['gpt-6.1-sol', 1], ['gpt-6-astra', 2], ['gpt-6.1-terra', 3], ['gpt-6-sol', 4],
+  ['gpt-6-luna', 5], ['gpt-6', 5], ['gpt-5.6-sol', 6], ['gpt-5.6-terra', 7], ['gpt-5.6-luna', 8], ['gpt-5.6', 9],
+  ['gpt-5', 10], ['gpt-4', 11], ['claude', 12], ['deepseek-v4', 20], ['deepseek-v3', 21], ['deepseek', 22],
+  ['kimi', 23]]
+const CONTEXT_WINDOW_MAP = { 'gpt-6.1': 500000, 'gpt-6': 272000, 'gpt-5.6-sol': 272000, 'gpt-5.6-terra': 272000,
+  'gpt-5.6-luna': 272000, 'gpt-5.6': 272000, 'gpt-5.5': 272000, 'gpt-5.4': 272000, 'gpt-4o': 128000,
+  'gpt-4o-mini': 128000, 'deepseek-v4-pro': 128000, 'deepseek-v4-flash': 128000, 'deepseek-chat': 64000,
+  'kimi-k3': 256000, 'claude-opus-4': 200000, 'claude-sonnet-4': 200000 }
+const DISPLAY_NAME_MAP = { 'gpt-6.1-sol': 'GPT-6.1 Sol', 'gpt-6.1-terra': 'GPT-6.1 Terra', 'gpt-6-astra': 'GPT-6 Astra',
+  'gpt-6-sol': 'GPT-6 Sol', 'gpt-6-luna': 'GPT-6 Luna', 'gpt-5.6-sol': 'GPT-5.6 Sol', 'gpt-5.6-terra': 'GPT-5.6 Terra',
   'gpt-5.6-luna': 'GPT-5.6 Luna', 'gpt-5.6': 'GPT-5.6', 'gpt-5.5': 'GPT-5.5', 'gpt-5.4': 'GPT-5.4',
   'gpt-5.4-mini': 'GPT-5.4 Mini', 'gpt-5.3-codex': 'GPT-5.3-Codex', 'gpt-5.3-codex-spark': 'GPT-5.3-Codex-Spark',
   'gpt-5.2': 'GPT-5.2', 'gpt-4o': 'GPT-4o', 'gpt-4o-mini': 'GPT-4o Mini', 'deepseek-v4-pro': 'DeepSeek V4 Pro',
@@ -333,6 +337,8 @@ function displayName(id) {
     const head = `Claude ${parts[0].charAt(0).toUpperCase()}${parts[0].slice(1)}`
     return parts.length > 1 ? `${head} ${parts.slice(1).join('-')}` : head
   }
+  const gpt = /^gpt-(\d+(?:\.\d+)?)-([a-z]+)$/.exec(id)
+  if (gpt) return `GPT-${gpt[1]} ${gpt[2].charAt(0).toUpperCase()}${gpt[2].slice(1)}`
   const parts = id.split('-')
   if (parts.length >= 2) {
     const base = parts.slice(0, 2).join('-').toUpperCase()
@@ -342,6 +348,10 @@ function displayName(id) {
   return id.toUpperCase()
 }
 function reasoningLevels(id) {
+  if (/^gpt-(6|5\.6)/.test(id)) {
+    return [{ effort: 'low', description: '更快、推理更轻' }, { effort: 'medium', description: '速度与推理深度均衡' },
+      { effort: 'high', description: '更深的推理，适合复杂问题' }, { effort: 'xhigh', description: '最深的推理，适合最难的问题' }]
+  }
   if (['gpt-5', 'opus', 'deepseek-v4-pro', 'kimi'].some((t) => id.includes(t))) {
     return [{ effort: 'low', description: '更快、推理更轻' }, { effort: 'medium', description: '速度与推理深度均衡' },
       { effort: 'high', description: '更深的推理，适合复杂问题' }]

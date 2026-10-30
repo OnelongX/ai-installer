@@ -8,6 +8,8 @@ import type {
   InstallExecutionResult,
   InstallLogEvent,
   StartInstallRequest,
+  SyncModelsRequest,
+  SyncModelsResult,
   ValidationResult
 } from '../../shared/ipc'
 import { isApiKeyValueValid } from '../../renderer/features/api-key/api-key-state'
@@ -51,6 +53,7 @@ import { buildPersistApiKeyCommand } from './tasks/persist-api-key.windows'
 import {
   buildConfigToml,
   buildGatewayConfigToml,
+  getCatalogWiring,
   getConfigBackupPath,
   getConfigTomlPath,
   getModelCatalogPath,
@@ -407,32 +410,61 @@ export function createInstallerService(deps: InstallerServiceDeps) {
       return { models }
     },
 
-    async syncModels(input: {
-      apiKey?: string
-      provider?: ProviderId
-      networkMode?: 'auto' | 'internal' | 'external'
-    }) {
-      // Refresh models-catalog.json without a full reinstall. Key comes from the
-      // caller or, failing that, the OPENAI_API_KEY this process already sees
-      // (the same one the persist step wrote and codex itself uses).
-      const apiKey = input.apiKey?.trim() || process.env.OPENAI_API_KEY?.trim()
-      if (!apiKey) {
-        return {
-          ok: false as const,
-          count: 0,
-          path: getModelCatalogPath(deps.userProfile),
-          message: '未找到 API Key：请先在上方填入 Key，或完成一次安装以写入环境变量。'
-        }
+    async syncModels(input: SyncModelsRequest): Promise<SyncModelsResult> {
+      // Refresh models-catalog.json without a full reinstall.
+      const catalogPath = getModelCatalogPath(deps.userProfile)
+      const fail = (message: string, notWired?: boolean) => ({
+        count: 0,
+        message,
+        notWired,
+        ok: false,
+        path: catalogPath
+      })
+
+      // Only worth doing when Codex actually reads this catalog. Otherwise the
+      // file would change and Codex's /model list wouldn't — while we reported
+      // success (e.g. a ChatGPT-login Codex shows OpenAI's models regardless).
+      const wiring = getCatalogWiring(
+        (await deps.readFile?.(getConfigTomlPath(deps.userProfile))) ?? null,
+        catalogPath
+      )
+      if (wiring === 'no-gateway') {
+        return fail(
+          '当前 Codex 没有接入 SolaEon 网关（config.toml 里没有 model_provider = "cm"，可能在用 ChatGPT 账号登录），模型目录不会生效。请先在「切换网关」里把 Codex 切到 SolaEon，再更新模型目录。',
+          true
+        )
+      }
+      if (wiring === 'no-catalog') {
+        return fail(
+          'config.toml 没有指向安装器的模型目录（model_catalog_json），更新后 Codex 也读不到。请在「切换网关」里重新切换一次 Codex。',
+          true
+        )
       }
 
-      const providerId = input.provider ?? DEFAULT_PROVIDER
-      const networkMode = input.networkMode ?? 'auto'
-      let internalReachable = false
-      if (providerId === 'solaeon' && networkMode === 'auto') {
-        internalReachable = await probeSolaeonInternal()
+      // Key + gateway: a saved profile (key decrypted here), else the caller's
+      // key or the OPENAI_API_KEY this process sees (what codex itself uses).
+      let apiKey = input.apiKey?.trim() || process.env.OPENAI_API_KEY?.trim()
+      let providerId = input.provider ?? DEFAULT_PROVIDER
+      let networkMode = input.networkMode ?? 'auto'
+      if (input.profileId) {
+        try {
+          const store = requireProfiles()
+          const profile = await store.get(input.profileId)
+          if (!profile || !isProviderId(profile.provider) || !isNetworkMode(profile.networkMode)) {
+            return fail('找不到这个网关配置，或它使用的网关已下线')
+          }
+          apiKey = await store.getKey(profile.id)
+          providerId = profile.provider
+          networkMode = profile.networkMode
+        } catch (error) {
+          return fail(errorMessage(error))
+        }
       }
-      const resolved = resolveProvider(providerId, networkMode, internalReachable)
-      const catalogPath = getModelCatalogPath(deps.userProfile)
+      if (!apiKey) {
+        return fail('未找到 API Key：请先在上方填入 Key，或完成一次安装以写入环境变量。')
+      }
+
+      const resolved = await resolveForProfile(providerId, networkMode)
 
       // Fetch the live gateway list and rebuild the full catalog (merged with
       // EXTRA_MODELS). fetchGatewayModels returns [] on failure, so worst case
@@ -443,7 +475,7 @@ export function createInstallerService(deps: InstallerServiceDeps) {
       await deps.writeFile(catalogPath, JSON.stringify(catalog, null, 2))
 
       return {
-        ok: true as const,
+        ok: true,
         count: catalog.models.length,
         gatewayCount: gatewayModels.length,
         path: catalogPath

@@ -70,7 +70,8 @@ interface ApiKeyStepProps {
     networkMode: NetworkMode
   }) => Promise<GatewayModel[]>
   onSyncModels?: (args: {
-    apiKey: string
+    /** omitted: the main process uses the OPENAI_API_KEY it already sees */
+    apiKey?: string
     provider: ProviderId
     networkMode: NetworkMode
   }) => Promise<{ ok: boolean; count: number; gatewayCount?: number; path: string; message?: string }>
@@ -131,15 +132,18 @@ export function ApiKeyStep({
   const [syncing, setSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
 
+  // Empty means "let the main process use the key it can already find".
+  const typedKey = value.trim()
+  const hasUsableKey = Boolean(typedKey) || canReuseExistingKey
+
   const syncCatalog = () => {
-    const key = value.trim()
-    if (!onSyncModels || !key) {
+    if (!onSyncModels || !hasUsableKey) {
       return
     }
     const { provider, networkMode } = toProviderAndMode(providerChoice)
     setSyncing(true)
     setSyncStatus(null)
-    void onSyncModels({ apiKey: key, provider, networkMode })
+    void onSyncModels({ apiKey: typedKey || undefined, provider, networkMode })
       .then((result) => {
         setSyncStatus(
           result.ok
@@ -374,16 +378,16 @@ export function ApiKeyStep({
                   <button
                     type="button"
                     onClick={syncCatalog}
-                    disabled={syncing || !value.trim()}
+                    disabled={syncing || !hasUsableKey}
                     title="重新拉取网关并写入 ~/.codex/models-catalog.json，无需重装"
                     style={{
                       border: '1px solid rgba(52, 211, 153, 0.5)',
                       background: 'transparent',
-                      color: value.trim() ? '#34d399' : 'rgba(148, 163, 184, 0.55)',
+                      color: hasUsableKey ? '#34d399' : 'rgba(148, 163, 184, 0.55)',
                       borderRadius: '999px',
                       padding: '5px 14px',
                       fontSize: '0.78rem',
-                      cursor: value.trim() ? 'pointer' : 'not-allowed'
+                      cursor: hasUsableKey ? 'pointer' : 'not-allowed'
                     }}
                   >
                     {syncing ? '更新中…' : '⬇ 更新 Codex 模型目录'}

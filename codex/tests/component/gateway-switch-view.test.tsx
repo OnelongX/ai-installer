@@ -81,6 +81,27 @@ describe('切换网关 screen', () => {
     expect(await screen.findByText('在执行任何安装前，先确认 API Key。')).toBeInTheDocument()
   })
 
+  it('refreshes the model catalog for a saved gateway and shows why it did nothing', async () => {
+    const syncModels = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, count: 61, gatewayCount: 54, path: 'x' })
+      .mockResolvedValueOnce({ ok: false, count: 0, path: 'x', notWired: true, message: '当前 Codex 没有接入 SolaEon 网关' })
+    const client = createTestInstallerClient({
+      listGatewayProfiles: async () => ({ geminiInstalled: true, profiles: [saved] }),
+      syncModels
+    })
+
+    render(<App installerClient={client} />)
+    fireEvent.click(await screen.findByRole('button', { name: /切换网关/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '⬇ 更新模型目录' }))
+
+    await waitFor(() => expect(syncModels).toHaveBeenCalledWith({ profileId: 'p1' }))
+    expect(await screen.findByText(/共 61 个模型（网关 54 \+ 内置补充）/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '⬇ 更新模型目录' }))
+    expect(await screen.findByText(/✗ 当前 Codex 没有接入 SolaEon 网关/)).toBeInTheDocument()
+  })
+
   it('switches only the ticked tools and shows save errors', async () => {
     const switchGateway = vi.fn(async () => ({ ok: true, results: [] }))
     const client = createTestInstallerClient({

@@ -68,6 +68,8 @@ export interface SyncModelsRequest {
   apiKey?: string
   provider?: ProviderId
   networkMode?: NetworkMode
+  /** use a saved 切换网关 profile (its gateway + encrypted key) instead */
+  profileId?: string
 }
 
 export interface SyncModelsResult {
@@ -80,6 +82,8 @@ export interface SyncModelsResult {
   path: string
   /** set when ok is false */
   message?: string
+  /** config.toml doesn't route Codex through the gateway catalog, so nothing was written */
+  notWired?: boolean
 }
 
 export interface ValidationResult {

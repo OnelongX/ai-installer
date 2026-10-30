@@ -10,7 +10,7 @@ import {
   type ProviderId,
   type ResolvedProvider
 } from '../../../shared/provider-config'
-import { mergeConfigToml } from './merge-config'
+import { mergeConfigToml, parseTomlTables } from './merge-config'
 
 interface BuildConfigTomlOptions {
   /** Fully-resolved provider (base_url, name, env_key). Wins over provider/networkMode. */
@@ -139,4 +139,45 @@ export function getConfigTomlPath(userProfile: string) {
 
 export function getModelCatalogPath(userProfile: string) {
   return path.join(userProfile, '.codex', 'models-catalog.json')
+}
+
+/** Value of a single-line TOML string (`'literal'` or `"basic"`), else null. */
+function readTomlString(line: string) {
+  const value = line.slice(line.indexOf('=') + 1).trim()
+  if (value.startsWith("'")) {
+    const end = value.indexOf("'", 1)
+    return end > 0 ? value.slice(1, end) : null
+  }
+  const basic = /^"((?:[^"\\]|\\.)*)"/.exec(value)
+  if (!basic) {
+    return null
+  }
+  try {
+    return JSON.parse(`"${basic[1]}"`) as string
+  } catch {
+    return null
+  }
+}
+
+export type CatalogWiring = 'wired' | 'no-gateway' | 'no-catalog'
+
+/**
+ * Does config.toml make Codex use the installer's gateway *and* read the given
+ * models-catalog.json? Only then does refreshing that file change Codex's
+ * /model list — a ChatGPT-login config (no model_provider = "cm") shows
+ * OpenAI's own models no matter what the catalog contains.
+ */
+export function getCatalogWiring(configToml: string | null | undefined, catalogPath: string): CatalogWiring {
+  const root = configToml ? parseTomlTables(configToml)[0] : undefined
+  const rootValue = (key: string) => {
+    const entry = root?.entries.find((candidate) => candidate.key === key)
+    return entry ? readTomlString(entry.lines[0]) : null
+  }
+
+  if (rootValue('model_provider') !== 'cm') {
+    return 'no-gateway'
+  }
+  const configured = rootValue('model_catalog_json')
+  const normalize = (value: string) => path.normalize(value).toLowerCase()
+  return configured && normalize(configured) === normalize(catalogPath) ? 'wired' : 'no-catalog'
 }
