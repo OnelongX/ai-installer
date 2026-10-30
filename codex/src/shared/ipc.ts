@@ -53,7 +53,8 @@ export type ExistingApiKeyResult =
   | { exists: true; mask: string }
 
 export interface ListModelsRequest {
-  apiKey: string
+  /** optional: SolaEon lists its models without a key */
+  apiKey?: string
   provider?: ProviderId
   networkMode?: NetworkMode
 }

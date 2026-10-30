@@ -106,7 +106,7 @@ describe('installer service', () => {
     expect(backupIndex).toBeLessThan(writes.findIndex((entry) => entry.path.endsWith('config.toml')))
   })
 
-  it('syncModels refuses without a key (no env, no input) and does not write', async () => {
+  it('syncModels refuses (and does not write) when config.toml is not on the gateway', async () => {
     const prev = process.env.OPENAI_API_KEY
     delete process.env.OPENAI_API_KEY
     try {
@@ -123,8 +123,9 @@ describe('installer service', () => {
 
       const result = await service.syncModels({ provider: 'solaeon' })
 
-      expect(result.ok).toBe(false)
-      expect(result.message).toBeTruthy()
+      // no readFile → no config.toml → Codex isn't using the gateway catalog
+      expect(result).toMatchObject({ ok: false, notWired: true })
+      expect(result.message).toContain('没有接入 SolaEon 网关')
       expect(result.path).toContain('.codex\\models-catalog.json')
       expect(writes).toHaveLength(0)
     } finally {

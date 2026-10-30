@@ -79,14 +79,23 @@ function countModels(raw: string): number {
   return extractModelIds(raw).length
 }
 
+/** Bearer header for a key; none at all when there is no key. */
+function authHeaders(apiKey: string | undefined): Record<string, string> {
+  const key = apiKey?.trim()
+  return key ? { Authorization: `Bearer ${key}` } : {}
+}
+
 /**
  * Fetch the gateway's models (id + label) so the installer can populate its
  * model picker from /v1/models instead of a hardcoded list. Returns [] on any
  * failure — the renderer then keeps its built-in fallback list.
+ *
+ * The key is optional: SolaEon serves /v1/models without one (verified on the
+ * LAN and WAN addresses), so the list can be refreshed before a key is known.
  */
 export async function fetchGatewayModels(
   provider: ResolvedProvider,
-  apiKey: string,
+  apiKey: string | undefined,
   fetchImpl: FetchLike = globalThis.fetch as unknown as FetchLike,
   timeoutMs = 15_000
 ): Promise<GatewayModel[]> {
@@ -95,7 +104,7 @@ export async function fetchGatewayModels(
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const response = await fetchImpl(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: authHeaders(apiKey),
       signal: controller.signal
     })
     if (!response.ok) {
@@ -112,7 +121,7 @@ export async function fetchGatewayModels(
 /** Id-only variant, kept for callers/tests that only need the identifiers. */
 export async function fetchGatewayModelIds(
   provider: ResolvedProvider,
-  apiKey: string,
+  apiKey: string | undefined,
   fetchImpl: FetchLike = globalThis.fetch as unknown as FetchLike,
   timeoutMs = 15_000
 ): Promise<string[]> {
@@ -162,7 +171,7 @@ export async function checkGatewayReachable(
 
   try {
     const response = await fetchImpl(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: authHeaders(apiKey),
       signal: controller.signal
     })
 

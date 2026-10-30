@@ -128,6 +128,14 @@ describe('install_codex.sh parity with the Windows installer', () => {
     expect(catalog).toEqual(buildModelCatalog(ids))
   })
 
+  it('sends no Authorization header when there is no key', async () => {
+    const seen: { auth?: string; url?: string } = {}
+    const base = await startGateway({ data: [{ id: 'gpt-6.1-sol' }] }, seen)
+    const { catalog } = await runCatalogJs(base, '')
+    expect(seen.auth).toBeUndefined()
+    expect(catalog).toEqual(buildModelCatalog(['gpt-6.1-sol']))
+  })
+
   it('accepts the OpenAI {data:[{id}]} shape too', async () => {
     const base = await startGateway({ data: [{ id: 'deepseek-chat' }] }, {})
     const { catalog } = await runCatalogJs(base)

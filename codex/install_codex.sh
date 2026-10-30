@@ -383,7 +383,9 @@ function extractIds(raw) {
 async function gatewayIds(baseUrl) {
   const url = `${baseUrl.replace(/\/+$/, '').replace(/\/v1$/i, '')}/v1/models`
   try {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${process.env.CODEX_GATEWAY_KEY || ''}` },
+    // No key, no Authorization header: SolaEon lists its models without one.
+    const key = (process.env.CODEX_GATEWAY_KEY || '').trim()
+    const res = await fetch(url, { headers: key ? { Authorization: `Bearer ${key}` } : {},
       signal: AbortSignal.timeout(15000) })
     return res.ok ? extractIds(await res.text()) : []
   } catch { return [] }

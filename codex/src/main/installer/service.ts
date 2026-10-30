@@ -390,7 +390,8 @@ export function createInstallerService(deps: InstallerServiceDeps) {
     },
 
     async listModels(input: {
-      apiKey: string
+      /** optional: SolaEon lists its models without a key */
+      apiKey?: string
       provider?: ProviderId
       networkMode?: 'auto' | 'internal' | 'external'
     }) {
@@ -443,6 +444,7 @@ export function createInstallerService(deps: InstallerServiceDeps) {
 
       // Key + gateway: a saved profile (key decrypted here), else the caller's
       // key or the OPENAI_API_KEY this process sees (what codex itself uses).
+      // No key is fine too — SolaEon lists its models without one.
       let apiKey = input.apiKey?.trim() || process.env.OPENAI_API_KEY?.trim()
       let providerId = input.provider ?? DEFAULT_PROVIDER
       let networkMode = input.networkMode ?? 'auto'
@@ -459,9 +461,6 @@ export function createInstallerService(deps: InstallerServiceDeps) {
         } catch (error) {
           return fail(errorMessage(error))
         }
-      }
-      if (!apiKey) {
-        return fail('未找到 API Key：请先在上方填入 Key，或完成一次安装以写入环境变量。')
       }
 
       const resolved = await resolveForProfile(providerId, networkMode)

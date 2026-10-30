@@ -65,7 +65,8 @@ interface ApiKeyStepProps {
   onOpenGatewaySwitch?: () => void
   onProbeNetwork?: () => Promise<NetworkProbeResult>
   onListModels?: (args: {
-    apiKey: string
+    /** optional: SolaEon lists its models without a key */
+    apiKey?: string
     provider: ProviderId
     networkMode: NetworkMode
   }) => Promise<GatewayModel[]>
@@ -132,12 +133,13 @@ export function ApiKeyStep({
   const [syncing, setSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
 
-  // Empty means "let the main process use the key it can already find".
+  // A typed key is passed along; empty means "use whatever key the main process
+  // can find, or none" — SolaEon lists its models without a key, so neither the
+  // model pull nor the catalog refresh needs one.
   const typedKey = value.trim()
-  const hasUsableKey = Boolean(typedKey) || canReuseExistingKey
 
   const syncCatalog = () => {
-    if (!onSyncModels || !hasUsableKey) {
+    if (!onSyncModels) {
       return
     }
     const { provider, networkMode } = toProviderAndMode(providerChoice)
@@ -167,13 +169,12 @@ export function ApiKeyStep({
   }
 
   const refreshModels = () => {
-    const key = value.trim()
-    if (!onListModels || !key) {
+    if (!onListModels) {
       return
     }
     const { provider, networkMode } = toProviderAndMode(providerChoice)
     setLoadingModels(true)
-    void onListModels({ apiKey: key, provider, networkMode })
+    void onListModels({ apiKey: typedKey || undefined, provider, networkMode })
       .then((gatewayModels) => {
         if (gatewayModels.length === 0) {
           return
@@ -361,15 +362,15 @@ export function ApiKeyStep({
                 <button
                   type="button"
                   onClick={refreshModels}
-                  disabled={loadingModels || !value.trim()}
+                  disabled={loadingModels}
                   style={{
                     border: '1px solid rgba(125, 211, 252, 0.45)',
                     background: 'transparent',
-                    color: value.trim() ? '#7dd3fc' : 'rgba(148, 163, 184, 0.55)',
+                    color: '#7dd3fc',
                     borderRadius: '999px',
                     padding: '5px 14px',
                     fontSize: '0.78rem',
-                    cursor: value.trim() ? 'pointer' : 'not-allowed'
+                    cursor: loadingModels ? 'progress' : 'pointer'
                   }}
                 >
                   {loadingModels ? '拉取中…' : '⟳ 从网关拉取'}
@@ -378,16 +379,16 @@ export function ApiKeyStep({
                   <button
                     type="button"
                     onClick={syncCatalog}
-                    disabled={syncing || !hasUsableKey}
-                    title="重新拉取网关并写入 ~/.codex/models-catalog.json，无需重装"
+                    disabled={syncing}
+                    title="重新拉取网关并写入 ~/.codex/models-catalog.json，无需重装，不需要 Key"
                     style={{
                       border: '1px solid rgba(52, 211, 153, 0.5)',
                       background: 'transparent',
-                      color: hasUsableKey ? '#34d399' : 'rgba(148, 163, 184, 0.55)',
+                      color: '#34d399',
                       borderRadius: '999px',
                       padding: '5px 14px',
                       fontSize: '0.78rem',
-                      cursor: hasUsableKey ? 'pointer' : 'not-allowed'
+                      cursor: syncing ? 'progress' : 'pointer'
                     }}
                   >
                     {syncing ? '更新中…' : '⬇ 更新 Codex 模型目录'}

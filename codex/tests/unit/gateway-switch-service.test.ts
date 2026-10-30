@@ -273,6 +273,25 @@ describe('切换网关 service', () => {
       expect(catalog.models.map((m: { slug: string }) => m.slug)).toContain('glm-5.3')
     })
 
+    it('refreshes without any key (SolaEon lists models without one)', async () => {
+      const { disk, service } = setup({
+        [codexConfig]: `model_provider = "cm"\nmodel_catalog_json = '${catalogPath}'\n`
+      })
+      const fetchMock = vi.fn(async (_url: string, _init: { headers: Record<string, string> }) => ({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ models: [{ slug: 'qwen3.8-flash' }] })
+      }))
+      vi.stubGlobal('fetch', fetchMock)
+      delete process.env.OPENAI_API_KEY
+
+      const result = await service.syncModels({ provider: 'solaeon', networkMode: 'external' })
+
+      expect(result).toMatchObject({ ok: true, gatewayCount: 1 })
+      expect(fetchMock.mock.calls[0]?.[1].headers).toEqual({})
+      expect(disk.get(catalogPath)).toContain('qwen3.8-flash')
+    })
+
     it('reports an unknown profile instead of throwing', async () => {
       const { service } = setup({
         [codexConfig]: `model_provider = "cm"\nmodel_catalog_json = '${catalogPath}'\n`

@@ -25,7 +25,7 @@ interface GatewaySwitchViewProps {
   onBack: () => void
   onDelete: (id: string) => Promise<{ ok: boolean; message?: string }>
   onListModels?: (args: {
-    apiKey: string
+    apiKey?: string
     provider: ProviderId
     networkMode: NetworkMode
   }) => Promise<GatewayModel[]>
@@ -181,11 +181,15 @@ export function GatewaySwitchView({
   }
 
   async function fetchModels() {
-    if (!draft || !onListModels || !draft.apiKey.trim()) return
+    // No key needed: SolaEon lists its models without one.
+    if (!draft || !onListModels) return
     setLoadingModels(true)
     try {
       setGatewayModels(
-        await onListModels({ apiKey: draft.apiKey.trim(), ...toProviderAndMode(draft.providerChoice) })
+        await onListModels({
+          apiKey: draft.apiKey.trim() || undefined,
+          ...toProviderAndMode(draft.providerChoice)
+        })
       )
     } finally {
       setLoadingModels(false)
@@ -459,10 +463,9 @@ export function GatewaySwitchView({
               {onListModels ? (
                 <button
                   type="button"
-                  disabled={loadingModels || !draft.apiKey.trim()}
+                  disabled={loadingModels}
                   onClick={() => void fetchModels()}
-                  title="需要先填 API Key"
-                  style={pillButton('ghost', loadingModels || !draft.apiKey.trim())}
+                  style={pillButton('ghost', loadingModels)}
                 >
                   {loadingModels ? '拉取中…' : '⟳ 从网关拉取模型'}
                 </button>

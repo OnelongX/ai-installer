@@ -37,6 +37,25 @@ describe('api key step', () => {
     expect(await screen.findByText(/已更新 Codex 模型目录：共 61 个模型/)).toBeInTheDocument()
   })
 
+  it('pulls models and refreshes the catalog with no key at all', async () => {
+    const onSyncModels = vi.fn(async () => ({ ok: true, count: 61, gatewayCount: 54, path: 'x' }))
+    const onListModels = vi.fn(async () => [{ id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol' }])
+    // no detected key, nothing typed
+    render(<ApiKeyStep onSyncModels={onSyncModels} onListModels={onListModels} />)
+
+    const pull = screen.getByRole('button', { name: '⟳ 从网关拉取' })
+    const sync = screen.getByRole('button', { name: '⬇ 更新 Codex 模型目录' })
+    expect(pull).toBeEnabled()
+    expect(sync).toBeEnabled()
+
+    fireEvent.click(pull)
+    fireEvent.click(sync)
+
+    expect(onListModels).toHaveBeenCalledWith({ apiKey: undefined, provider: 'solaeon', networkMode: 'auto' })
+    expect(onSyncModels).toHaveBeenCalledWith({ apiKey: undefined, provider: 'solaeon', networkMode: 'auto' })
+    expect(await screen.findByText(/已更新 Codex 模型目录：共 61 个模型/)).toBeInTheDocument()
+  })
+
   it('opens 切换网关 from the first screen', () => {
     const onOpenGatewaySwitch = vi.fn()
     render(<ApiKeyStep onOpenGatewaySwitch={onOpenGatewaySwitch} />)

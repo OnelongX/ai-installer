@@ -10,6 +10,23 @@ import {
   probeGeminiApi
 } from '../../src/main/installer/tasks/detect-gateway'
 
+describe('keyless model list', () => {
+  it('omits the Authorization header when there is no key', async () => {
+    const headers: Array<Record<string, string>> = []
+    const fetchImpl = async (_url: string, init: { headers: Record<string, string> }) => {
+      headers.push(init.headers)
+      return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ id: 'gpt-6.1-sol' }] }) }
+    }
+    const gateway = resolveProvider('solaeon', 'external')
+
+    expect(await fetchGatewayModelIds(gateway, undefined, fetchImpl)).toEqual(['gpt-6.1-sol'])
+    expect(await fetchGatewayModelIds(gateway, '  ', fetchImpl)).toEqual(['gpt-6.1-sol'])
+    await fetchGatewayModelIds(gateway, 'sk-x', fetchImpl)
+
+    expect(headers).toEqual([{}, {}, { Authorization: 'Bearer sk-x' }])
+  })
+})
+
 describe('gemini api probe', () => {
   it('treats any HTTP answer (even 403) as "route served"', async () => {
     const seen: string[] = []
